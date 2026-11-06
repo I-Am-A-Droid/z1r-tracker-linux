@@ -211,6 +211,21 @@ pub const ROOM_TYPE_NAMES: [&str; 34] = [
     "Old Man (Hint)", "Bomb Upgrade", "Life or Money", "Meat Block",
     "Start (E)", "Start (W)", "Start (N)", "Start (S)", "Off the Map", "Ganon", "Zelda",
 ];
+/// The fuller description of each room type, shown when pointing at a room or a choice (from Z-Tracker 1.2.3's
+/// source, Z1R_WPF/DungeonRoomState.fs, `RoomType.DisplayDescription`; 2.1.0 shortened these).
+pub const ROOM_TYPE_DESCRIPTIONS: [&str; 34] = [
+    "(Unmarked)", "Empty/non-descript room", "Room which might have a staircase", "Room with staircase to a basement item",
+    "Room with staircase (unknown destination)",
+    "Transport staircase #1 (one of matched pair)", "Transport staircase #2 (one of matched pair)",
+    "Transport staircase #3 (one of matched pair)", "Transport staircase #4 (one of matched pair)",
+    "Transport staircase #5 (one of matched pair)", "Transport staircase #6 (one of matched pair)",
+    "Transport staircase #7 (one of matched pair)", "Transport staircase #8 (one of matched pair)",
+    "Chevy (four-way moat-ladder-block)", "Double moat", "North moat", "East moat", "Circle moat",
+    "Tee (moat isolating south exit)", "Lava moat (weird shaped moat)", "Vertical chute", "Horizontal chute", "Turnstile",
+    "NPC with hint", "Bomb Upgrade (75-125 rupees)", "Life or Money (pay to escape) room", "Hungry Goriya (meat block)",
+    "Dungeon entrance (from east)", "Dungeon entrance (from west)", "Dungeon entrance (from north)",
+    "Dungeon entrance (from south)", "(Off the map)", "Ganon", "Zelda",
+];
 /// Picture in the 13x9 room-icon sheet for each room type (top half = not yet done, bottom half = done).
 pub const ROOM_ICON: [i32; 34] = [0, 1, 10, 11, 25, 17, 18, 19, 20, 21, 22, 23, 24, 3, 2, 5, 4, 6, 9, 33, 7, 8, 16, 12, 15, 14, 13, 29, 26, 27, 28, 30, 31, 32];
 pub const ROOM_UNMARKED: usize = 0;

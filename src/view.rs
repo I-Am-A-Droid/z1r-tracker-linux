@@ -884,7 +884,7 @@ impl View {
         self.text(p, 8.0, DUNGEON_Y + TAB_H + 4.0, 18.0, Color32::WHITE, &format!("{word}-{}", sel + 1));
         let (info, size, color) = if let Target::Room(x, y) = self.hover {
             let room = &self.m.maps[sel].rooms[x][y];
-            let mut d = ROOM_TYPE_NAMES[room.kind].to_string();
+            let mut d = ROOM_TYPE_DESCRIPTIONS[room.kind].to_string();
             if room.monster > 0 {
                 d += &format!(" / {}", MONSTER_NAMES[room.monster]);
             }

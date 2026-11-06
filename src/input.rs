@@ -669,7 +669,7 @@ impl View {
         let mut pop = Popup::new("Room type", 9, 46.0, 36.0, Pos2::new(p.x, (p.y + 20.0).min(H - 200.0)), Action::RoomType(x, y));
         for i in 0..ROOM_TYPES.len() {
             let icon = if i == 0 { Icon::None } else { Icon::Room(ROOM_ICON[i], i >= 32) };
-            pop.choices.push(Choice::new(icon, if i == 0 { "none" } else { ROOM_TYPE_NAMES[i] }, ROOM_TYPE_NAMES[i]).sel(cur == i));
+            pop.choices.push(Choice::new(icon, if i == 0 { "none" } else { ROOM_TYPE_NAMES[i] }, ROOM_TYPE_DESCRIPTIONS[i]).sel(cur == i));
         }
         self.popup = Some(pop);
     }

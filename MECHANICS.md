@@ -478,3 +478,20 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   "Hide map tiles until Zelda is rescued..." and use the original's setting names, so a shared settings file works
   both ways. Arrow level counts the wood arrow (progress) or silver arrow, candle the blue or red candle, ring the blue
   or red ring, key the magic key.
+
+## Z-Tracker 1.2.3 compared (checked 2026-11-06)
+The person pointed to /home/jason/Code/Zelda1RandoTools/UserCustomAssets/ZTracker_v1.2.3/Z1R_WPF.exe as an updated
+version. It is older than the program this rebuild follows: no file version in its resources, README "v1.2", dated
+2022-08-15; the source code beside it (git, latest commit "Version 1.3.1 full release", `OverworldData.VersionString =
+"1.3.1"`) is newer than it, and Z1R_WPF 2.1.0.2 newer still. Compared by the text in both programs (UTF-16 user
+strings, and 2.1.0's resource and translation files):
+- Same map screen pictures in its `Overworld` folder (all 128 files identical) and the same settings keys.
+- Gone in 2.1.0 on purpose (not brought back): a "Day %d / Night %d" timer joke mode ("terraria"), already removed
+  in the 1.3.1 source; the "Remaining Locations Summary" (commented out in 1.3.1: OverworldMapTileCustomization.fs).
+- Worded differently: 1.2.3 describes room types more fully (Z1R_WPF/DungeonRoomState.fs, `RoomType.DisplayDescription`,
+  e.g. "Chevy (four-way moat-ladder-block)", "Tee (moat isolating south exit)", "Transport staircase #1 (one of
+  matched pair)"); 2.1.0 shortened them. Applied: the room pop-up keeps the short names, and pointing at a room or a
+  choice now shows the fuller description (`data::ROOM_TYPE_DESCRIPTIONS`).
+- Also in that source (`BmpPair`): Ganon and Zelda rooms use their "done" picture in both states; the old-man hint
+  room uses its "done" picture unless "BookForHelpfulHints" — matching the pictures the rebuild already draws.
+Everything else in 1.2.3 is already in 2.1.0 and so in this rebuild.

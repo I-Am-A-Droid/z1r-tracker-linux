@@ -822,6 +822,31 @@ mod tests {
     }
 
     #[test]
+    fn room_descriptions_match_room_types() {
+        use crate::data::{ROOM_TYPES, ROOM_TYPE_DESCRIPTIONS};
+        for (kind, desc) in ROOM_TYPES.iter().zip(ROOM_TYPE_DESCRIPTIONS.iter()) {
+            let first = desc.trim_matches(['(', ')']).split([' ', '/']).next().unwrap().to_lowercase();
+            let ok = match *kind {
+                "StartEnterFromE" => desc.ends_with("(from east)"),
+                "StartEnterFromW" => desc.ends_with("(from west)"),
+                "StartEnterFromN" => desc.ends_with("(from north)"),
+                "StartEnterFromS" => desc.ends_with("(from south)"),
+                "TopMoat" => *desc == "North moat",
+                "RightMoat" => *desc == "East moat",
+                "Gannon" => *desc == "Ganon",
+                "MaybePushBlock" | "ItemBasement" | "StaircaseToUnknown" => desc.starts_with("Room"),
+                "NonDescript" => desc.starts_with("Empty"),
+                "OldManHint" => desc.starts_with("NPC"),
+                "HungryGoriyaMeatBlock" => desc.starts_with("Hungry"),
+                "VChute" | "HChute" => desc.ends_with("chute"),
+                k if k.starts_with("Transport") => desc.contains(&format!("#{}", &k[9..])),
+                k => k.to_lowercase().starts_with(&first),
+            };
+            assert!(ok, "{kind} -> {desc}");
+        }
+    }
+
+    #[test]
     fn hidden_tiles_follow_the_originals_rules() {
         let mut t = Tracker::new();
         t.mark[1][1] = 25; // large secret

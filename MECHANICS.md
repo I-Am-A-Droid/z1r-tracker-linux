@@ -730,3 +730,19 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
 ## Map-marking pop-up in 9 columns (changed on request)
 The pop-up for marking a map screen is laid out in 9 columns (`MARK_PICKER_COLS`), and "none" moved from the first
 to the last cell, so levels 1-9 fill the first row, any roads and sword caves the second, and so on.
+
+## The original's marking pop-up (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "ShopsFirst": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL and the 1.3.1 source.
+- `WPFUI::activatePopup@703-45` (IL listing line 17280; WPFUI.fs in the source): a grid of GCOL = 8 columns and
+  GROW = 5 rows (6 with `PersonalPrefMarkersEnabled`, "When enabled, the tile selector popup includes two
+  personal-preference marker tiles (asterisk and diamond)… Off by default"), cells 15 x 27 (the inner pictures):
+  marks 0-23 in three rows; [gap, 24-29, gap]; [30-34, "don't care" 35, Unmarked, gap]. "Unmarked" is near the end.
+- Placement, relative to the tile: left (−3) when the tile's x < 2 tiles, right-aligned (OMTW − gridWidth) when > 13
+  tiles, else centred ((OMTW − gridWidth)/2 rounded to a multiple of 3); just below the tile (11·3 + border).
+- "Shops before dungeons" (`ShopsFirst`, OptionsMenu.fs: "In the overworld map tile popup, the grid starts with shops
+  when this is checked"): the grid is rotated, [grid.[16..]; grid.[..15]].
+- Applied: the pop-up (9 columns, as asked) is now placed by the tile with the original's alignment
+  (`input::mark_picker_anchor`, tested), and "Shops first" puts the shops and everything after them before the
+  dungeons and any roads. The personal markers ("Start", "P2") stay in the pop-up even though the original hides them
+  unless PersonalPrefMarkersEnabled is on, because the person uses the Start marker.

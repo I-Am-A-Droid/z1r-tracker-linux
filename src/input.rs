@@ -17,6 +17,23 @@ enum Btn {
 /// Columns of the map-marking pop-up (asked for: 9, so the nine levels share a row).
 pub const MARK_PICKER_COLS: usize = 9;
 
+/// Where the marking pop-up goes, as in the original (WPFUI::activatePopup@703-45, token in the IL listing at line
+/// 17280): just below the tile; left-aligned with it for the first two columns (−3 px), right-aligned for the last two
+/// (the tile's x beyond 13 tiles), otherwise centred on it. Returns the pop-up's top-centre.
+pub fn mark_picker_anchor(x: usize, y: usize, mirror: bool) -> Pos2 {
+    let col = if mirror { 15 - x } else { x } as f32;
+    let tile = crate::view::rect(col * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
+    let w = MARK_PICKER_COLS as f32 * 54.0 + 16.0; // the pop-up's width (cells + padding)
+    let cx = if tile.min.x < TILE_W * 2.0 {
+        tile.min.x - 3.0 + w / 2.0
+    } else if tile.min.x > TILE_W * 13.0 {
+        tile.max.x - w / 2.0
+    } else {
+        tile.center().x
+    };
+    Pos2::new(cx, (tile.max.y + 3.0).min(H - 330.0))
+}
+
 /// One cell of the "Starting Items and Extra Drops" panel (the original's "..." button,
 /// OverworldItemGridUI.makeExtrasPanelAndepRefresh in the Z-Tracker source).
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -558,8 +575,10 @@ impl View {
     fn mark_order(&self) -> Vec<i32> {
         let all: Vec<i32> = (0..TILES.len() as i32).collect();
         if self.settings.get("ShopsFirst") {
-            let (shops, rest): (Vec<i32>, Vec<i32>) = all.into_iter().partition(|i| (SHOP_FIRST..=SHOP_LAST).contains(i));
-            shops.into_iter().chain(rest).collect()
+            // the original rotates its grid: everything from the shops on first, then the dungeons and any roads
+            // (WPFUI.fs: [| grid.[16..]; grid.[..15] |])
+            let (early, late): (Vec<i32>, Vec<i32>) = all.into_iter().partition(|i| *i < SHOP_FIRST);
+            late.into_iter().chain(early).collect()
         } else {
             all
         }
@@ -579,10 +598,11 @@ impl View {
         }
     }
 
-    pub fn open_mark_picker(&mut self, x: usize, y: usize, p: Pos2) {
+    /// `_click`: where the click was; the pop-up is placed by the tile instead, as in the original.
+    pub fn open_mark_picker(&mut self, x: usize, y: usize, _click: Pos2) {
         let order = self.mark_order();
         let title = format!("Mark {}{} ({})", (b'A' + y as u8) as char, x + 1, HINT_ZONE_NAMES[zone_at(x, y)]);
-        let mut pop = Popup::new(title, MARK_PICKER_COLS, 54.0, 39.0, Pos2::new(p.x, (p.y + 20.0).min(H - 330.0)), Action::Mark(x, y, order.clone()));
+        let mut pop = Popup::new(title, MARK_PICKER_COLS, 54.0, 39.0, mark_picker_anchor(x, y, self.m.mirror), Action::Mark(x, y, order.clone()));
         for &m in &order {
             let t = &TILES[m as usize];
             let (used, max) = (self.m.uses_of_mark(m), self.m.max_uses(m));
@@ -1188,6 +1208,19 @@ mod tests {
         v.choose(Action::Starting, at(ExtraCell::HeartsUp), false);
         v.choose(Action::Starting, at(ExtraCell::HeartsDown), false);
         assert_eq!(v.m.max_hearts(), before + 1);
+    }
+
+    #[test]
+    fn marking_popup_sits_under_the_tile_like_the_original() {
+        let w = MARK_PICKER_COLS as f32 * 54.0 + 16.0;
+        let a = mark_picker_anchor(0, 2, false); // first column: left-aligned
+        assert_eq!(a.x - w / 2.0, -3.0);
+        assert_eq!(a.y, MAP_Y + 3.0 * TILE_H + 3.0);
+        let b = mark_picker_anchor(15, 2, false); // last column: right-aligned with the tile
+        assert_eq!(b.x + w / 2.0, 16.0 * TILE_W);
+        let c = mark_picker_anchor(7, 2, false); // middle: centred
+        assert_eq!(c.x, 7.5 * TILE_W);
+        assert_eq!(mark_picker_anchor(15, 2, true).x, mark_picker_anchor(0, 2, false).x); // mirrored: screen column
     }
 
     #[test]

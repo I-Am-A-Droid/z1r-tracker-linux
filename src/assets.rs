@@ -9,6 +9,8 @@ pub struct Sheet {
     pub texture: Option<TextureHandle>,
     /// pixels per unit: the pictures are drawn in more detail than the units the drawing code uses
     pub scale: f32,
+    /// shown with sharp pixels when enlarged (the overworld map pictures)
+    pub pixel_art: bool,
 }
 
 /// Smooth scaling, with smaller copies for when a picture is shown much smaller than it is drawn.
@@ -31,7 +33,7 @@ impl Default for Assets {
 
 impl Assets {
     pub fn new() -> Self {
-        let sheets = crate::art::sheets().into_iter().map(|(name, image, scale)| (name.to_string(), Sheet { image, texture: None, scale })).collect();
+        let sheets = crate::art::sheets().into_iter().map(|(name, image, scale, pixel_art)| (name.to_string(), Sheet { image, texture: None, scale, pixel_art })).collect();
         Assets { sheets }
     }
 
@@ -40,7 +42,8 @@ impl Assets {
         let s = self.sheets.get_mut(sheet)?;
         let size = [s.image.size[0] as f32 / s.scale, s.image.size[1] as f32 / s.scale];
         if s.texture.is_none() {
-            s.texture = Some(ctx.load_texture(sheet, s.image.clone(), SMOOTH));
+            let options = if s.pixel_art { TextureOptions { magnification: egui::TextureFilter::Nearest, ..SMOOTH } } else { SMOOTH };
+            s.texture = Some(ctx.load_texture(sheet, s.image.clone(), options));
         }
         Some((s.texture.as_ref().unwrap().id(), size))
     }

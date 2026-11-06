@@ -401,3 +401,11 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
   (0x0600217c, RVA 0x79268).
 - Applied: the letters and numbers on the tracker's own map markers and on found level numbers now take black or
   white by this rule from their box colour (`art::black_is_good_contrast`), instead of always black.
+
+## Overworld map pictures (changed on request)
+The overworld map is now made from the person's map screen pictures, copied from the original's `Overworld` folder
+(`quest.0.ow.XX. Y.bmp`, 128 PNG files of 48 x 33 pixels: column XX 0-15, row Y 0-7, first quest only) into
+`assets/overworld/quest0_xXX_yY.png`. `build.rs` embeds every file there in the program (`OVERWORLD_TILES`), and
+`art::overworld` puts them together into the 768 x 264 map sheet at 3 pixels per unit, shown with sharp pixels when
+enlarged. All four overworld choices use these first-quest pictures; a screen without a picture would be drawn by
+the tracker's own map drawing (`art::drawn_overworld`). Nothing is read from the original's folder at run time.

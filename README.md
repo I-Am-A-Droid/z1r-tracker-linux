@@ -9,8 +9,11 @@ It reads and writes the same `zt-save-*.json` files as the original, so saves mo
 
 ## Pictures
 
-Every picture (the overworld map, items, map markers, dungeon rooms, monsters and the logo) is drawn by the program
-itself, in high detail with smooth edges, shading and outlines, so it stays sharp at any window size. It needs no other files: the original Z-Tracker doesn't have to be installed.
+The overworld map is made from the 128 map screen pictures in `assets/overworld` (taken from the original
+Z-Tracker's `Overworld` folder, first quest; the other overworld choices use the same pictures). They are built into
+the program. Every other picture (items, map markers, dungeon rooms, monsters and the logo) is drawn by the program
+itself, in high detail with smooth edges, shading and outlines. It needs no other files when it runs: the original
+Z-Tracker doesn't have to be installed.
 
 ## Download
 

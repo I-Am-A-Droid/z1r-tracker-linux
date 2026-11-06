@@ -1009,15 +1009,39 @@ fn kind_at(x: f32, y: f32) -> u8 {
     TERRAIN[sy * 3 + by].as_bytes()[(x / 4.0) as usize]
 }
 
-/// The map is drawn this many pixels per map unit.
-const MAP_SCALE: usize = 4;
+include!(concat!(env!("OUT_DIR"), "/overworld_tiles.rs"));
 
-/// "s_map_overworld_strip8.png": the overworld (16 x 8 screens of 16 x 11 units) at 4 pixels per unit. The edges
+/// "s_map_overworld_strip8.png": the overworld, 16 x 8 screens of 16 x 11 units. Made from the map screen pictures
+/// in assets/overworld (first quest, 48 x 33 pixels each, so 3 pixels per unit), which are built into the program; the
+/// other overworlds use the same pictures. Any screen without a picture is drawn by `drawn_overworld` instead.
+/// Returns the picture and its pixels per unit.
+fn overworld() -> (Img, usize) {
+    let decode = |bytes: &[u8]| image::load_from_memory_with_format(bytes, image::ImageFormat::Png).ok().map(|i| i.to_rgba8());
+    let tiles: Vec<(usize, usize, image::RgbaImage)> = OVERWORLD_TILES
+        .iter()
+        .filter(|t| t.0 == 0 && t.1 < 16 && t.2 < 8)
+        .filter_map(|&(_, x, y, bytes)| decode(bytes).map(|img| (x, y, img)))
+        .collect();
+    let scale = tiles.first().map(|t| t.2.width() as usize / 16).filter(|&s| s > 0).unwrap_or(4);
+    let tiles: Vec<_> = tiles.into_iter().filter(|t| t.2.width() as usize == 16 * scale && t.2.height() as usize == 11 * scale).collect();
+    let mut img = if tiles.len() == 16 * 8 { Img::new(256 * scale, 88 * scale) } else { drawn_overworld(scale) };
+    for (x, y, tile) in &tiles {
+        for (px, py, p) in tile.enumerate_pixels() {
+            let [r, g, b, a] = p.0;
+            let i = (y * 11 * scale + py as usize) * img.w + x * 16 * scale + px as usize;
+            img.px[i] = C(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a as f32 / 255.0);
+        }
+    }
+    (img, scale)
+}
+
+/// The tracker's own drawing of the overworld (16 x 8 screens of 16 x 11 units), `scale` pixels per unit, for screens
+/// that have no picture in assets/overworld. The edges
 /// between kinds of ground are bent a little with smooth noise so they look natural; forests get trees, rock gets
 /// boulders, the graveyard gravestones, water a shore and waves, sand ripples.
-fn overworld() -> Img {
-    let (w, h) = (256 * MAP_SCALE, 88 * MAP_SCALE);
-    let s = MAP_SCALE as f32;
+fn drawn_overworld(scale: usize) -> Img {
+    let (w, h) = (256 * scale, 88 * scale);
+    let s = scale as f32;
     // the ground kind of every pixel, with bent edges
     let mut kinds = vec![0u8; w * h];
     for y in 0..h {
@@ -1180,8 +1204,10 @@ fn strip(cells: Vec<Img>) -> Img {
 /// The item pictures in grey, for items not had yet in the progress row.
 pub const GREY_ITEMS: &str = "icons7x7 grey";
 
-/// Every picture sheet: its name, the picture, and how many pixels make one of the units the drawing code uses.
-pub fn sheets() -> Vec<(&'static str, ColorImage, f32)> {
+/// Every picture sheet: its name, the picture, how many pixels make one of the units the drawing code uses, and
+/// whether it is pixel art (shown with sharp pixels when enlarged).
+pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
+    let (map, map_scale) = overworld();
     let items = strip((0..32).map(|i| item_img(i, 28)).collect()).image();
     let grey = greyscale(&items);
     let shop3 = strip(
@@ -1202,18 +1228,18 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32)> {
         rooms.put(&room_img(i, true), i * 52, 36);
     }
     vec![
-        ("icons7x7.png", items, 4.0),
-        (GREY_ITEMS, grey, 4.0),
-        ("icons3x7.png", shop3.image(), 4.0),
-        ("icons8x8.png", heart8.image(), 4.0),
-        ("icons10x10.png", strip((0..10).map(icon10).collect()).image(), 4.0),
-        ("zelda_bosses16x16.png", strip((0..32).map(monster_img).collect()).image(), 2.0),
-        ("zelda_items16x16.png", strip((0..13).map(floor_img).collect()).image(), 2.0),
-        ("s_icon_overworld_strip39.png", strip((0..39).map(marker_img).collect()).image(), 4.0),
-        ("s_btn_tr_dungeon_num_strip18.png", strip((0..18).map(level_number_img).collect()).image(), 4.0),
-        ("new_icons13x9.png", rooms.image(), 4.0),
-        ("s_map_overworld_strip8.png", overworld().image(), MAP_SCALE as f32),
-        ("ZTlogo64x64.png", logo().image(), 2.0),
+        ("icons7x7.png", items, 4.0, false),
+        (GREY_ITEMS, grey, 4.0, false),
+        ("icons3x7.png", shop3.image(), 4.0, false),
+        ("icons8x8.png", heart8.image(), 4.0, false),
+        ("icons10x10.png", strip((0..10).map(icon10).collect()).image(), 4.0, false),
+        ("zelda_bosses16x16.png", strip((0..32).map(monster_img).collect()).image(), 2.0, false),
+        ("zelda_items16x16.png", strip((0..13).map(floor_img).collect()).image(), 2.0, false),
+        ("s_icon_overworld_strip39.png", strip((0..39).map(marker_img).collect()).image(), 4.0, false),
+        ("s_btn_tr_dungeon_num_strip18.png", strip((0..18).map(level_number_img).collect()).image(), 4.0, false),
+        ("new_icons13x9.png", rooms.image(), 4.0, false),
+        ("s_map_overworld_strip8.png", map.image(), map_scale as f32, true),
+        ("ZTlogo64x64.png", logo().image(), 2.0, false),
     ]
 }
 
@@ -1408,6 +1434,15 @@ mod tests {
     }
 
     #[test]
+    fn the_map_is_made_from_the_overworld_pictures() {
+        assert_eq!(super::OVERWORLD_TILES.len(), 128);
+        let (map, scale) = super::overworld();
+        assert_eq!((scale, map.w, map.h), (3, 768, 264));
+        // every pixel came from a picture (nothing see-through left)
+        assert!(map.px.iter().all(|c| c.3 > 0.0));
+    }
+
+    #[test]
     fn every_pattern_is_the_right_size() {
         for (i, p) in super::MONSTERS8.iter().enumerate() {
             assert!(p.iter().all(|r| r.len() == 8), "monster {i}");
@@ -1432,7 +1467,7 @@ mod tests {
     #[ignore]
     fn save_sheets() {
         let dir = std::path::PathBuf::from(std::env::var("Z1R_ART_DIR").expect("set Z1R_ART_DIR"));
-        for (name, img, _) in super::sheets() {
+        for (name, img, _, _) in super::sheets() {
             let rgba: Vec<u8> = img.pixels.iter().flat_map(|c| c.to_srgba_unmultiplied()).collect();
             image::save_buffer(dir.join(format!("{}.png", name.trim_end_matches(".png").replace(' ', "_"))), &rgba, img.size[0] as u32, img.size[1] as u32, image::ColorType::Rgba8).unwrap();
         }

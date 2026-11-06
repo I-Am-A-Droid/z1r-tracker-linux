@@ -642,3 +642,9 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   bold white on transparent otherwise — as the rebuild draws them.
 - Applied: `Tracker::triforce_haves` (used by the reference diagram) and `Tracker::triforce_for` (used by the recorder
   destinations). Before, with hidden dungeon numbers both used the dungeon's tab position instead of its label.
+
+## Coast item box stays on F16 (changed on request)
+The original removes the coast item box from F16 once its item is chosen and had or skipped (`WPFUI/makeAll@523-74`,
+ladderBox.IsDone). On request it now stays, showing the chosen item with its green (had) or purple (skipped) border;
+clicking it still changes the item, and the right-click / wheel still cycle had / skipped. The coast reminder still
+stops once the box is done.

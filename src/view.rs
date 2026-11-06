@@ -703,10 +703,10 @@ impl View {
                     self.text(p, r.max.x - 18.0, r.max.y - 13.0, 9.0, Color32::WHITE, &c);
                 }
                 self.hit(r, Target::MapTile(x, y));
-                // F16 holds the coast item box until that item is chosen and had/skipped (WPFUI/makeAll@514-73,
-                // hidden by WPFUI/makeAll@523-74 once ladderBox.IsDone). The original puts it at (+17,+1); here it is
-                // centered like the other marks.
-                if is_coast(x, y) && !self.m.ladder_box.is_done() {
+                // F16 holds the coast item box (WPFUI/makeAll@514-73). The original hides it once ladderBox.IsDone
+                // (WPFUI/makeAll@523-74); on request it stays, showing the chosen item and its had/skipped border.
+                // The original puts it at (+17,+1); here it is centered like the other marks.
+                if is_coast(x, y) {
                     let b = centered_in(r, CELL, CELL);
                     self.draw_box(p, b, BoxId::Ladder);
                 }

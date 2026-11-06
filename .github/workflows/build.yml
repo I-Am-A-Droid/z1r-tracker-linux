@@ -1,0 +1,60 @@
+# Builds and tests Z-Tracker on Linux, Windows and macOS, and offers each program as a download.
+# Every push: the programs appear under the run's "Artifacts". A tag like v2.1.0: also a GitHub release with them.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: z1r-tracker-linux-x86_64
+            target: x86_64-unknown-linux-gnu
+            exe: z1r-tracker
+          - os: windows-latest
+            name: z1r-tracker-windows-x86_64
+            target: x86_64-pc-windows-msvc
+            exe: z1r-tracker.exe
+          - os: macos-latest
+            name: z1r-tracker-macos-apple-silicon
+            target: aarch64-apple-darwin
+            exe: z1r-tracker
+          - os: macos-latest
+            name: z1r-tracker-macos-intel
+            target: x86_64-apple-darwin
+            exe: z1r-tracker
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Test
+        if: matrix.target != 'x86_64-apple-darwin'
+        run: cargo test --release --target ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist/${{ matrix.name }}
+          cp target/${{ matrix.target }}/release/${{ matrix.exe }} README.md dist/${{ matrix.name }}/
+          cd dist && tar czf ${{ matrix.name }}.tar.gz ${{ matrix.name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.name }}.tar.gz

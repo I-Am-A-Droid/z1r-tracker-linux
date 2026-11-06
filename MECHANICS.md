@@ -273,3 +273,10 @@ Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_fin
 Seconds to the timer box (and the broadcast timer): hours padded to two places with a space, and wrapping after 23
 because TimeSpan.Hours leaves out whole days. The rebuild now writes the timer the same way (it used to show unpadded,
 unwrapped hours).
+
+## Windows and macOS (changed on request)
+The same code now builds for Linux, Windows (x86_64) and macOS (Apple Silicon and Intel); `cargo check` passes for
+x86_64-pc-windows-gnu, aarch64-apple-darwin and x86_64-apple-darwin. Only `src/platform.rs` differs by system: settings
+and save folders, opening files/links (xdg-open / explorer / open) and the local time for save names. The tracker's
+behaviour and the save-file format are the same everywhere. `.github/workflows/build.yml` builds and tests all of them
+on GitHub and offers the programs as downloads.

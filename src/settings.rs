@@ -1,5 +1,5 @@
 //! Options are kept in the same file format as the original (Z1R_Tracker_settings.json),
-//! in ~/.config/z1r-tracker. Unknown keys are kept as they are.
+//! in the app's settings folder (see platform.rs). Unknown keys are kept as they are.
 //! Hot keys use the original's HotKeys.txt format ("SelectorName = key").
 
 use crate::data::*;
@@ -8,15 +8,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-pub fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
-}
-pub fn config_dir() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config")).join("z1r-tracker")
-}
-pub fn save_dir() -> PathBuf {
-    std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".local/share")).join("z1r-tracker").join("saves")
-}
+pub use crate::platform::{config_dir, save_dir};
 
 pub const BOOL_OPTIONS: [(&str, &str, bool); 17] = [
     ("WideLayoutWhenRoomy", "Put the dungeons and timeline beside the map when the window is wide", true),

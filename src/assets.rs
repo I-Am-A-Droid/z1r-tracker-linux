@@ -39,7 +39,8 @@ impl Assets {
         if let Ok(d) = std::env::current_dir() {
             v.push(d.join("Z1R_WPF.exe"));
         }
-        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        {
+            let home = crate::platform::home();
             for root in [home.join("Downloads"), home.clone(), home.join("Games"), home.join("Desktop"), PathBuf::from("/opt")] {
                 let Ok(rd) = std::fs::read_dir(&root) else { continue };
                 for e in rd.flatten() {

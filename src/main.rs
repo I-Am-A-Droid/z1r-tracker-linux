@@ -1,9 +1,13 @@
+// no console window on Windows
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 //! Z-Tracker for Linux: a rebuild of the Zelda 1 Randomizer tracker (Z1R_WPF) as a native Linux app.
 
 mod assets;
 mod data;
 mod input;
 mod model;
+mod platform;
 mod settings;
 mod view;
 
@@ -256,15 +260,7 @@ impl TrackerApp {
     }
 
     fn stamp() -> String {
-        // local time as yyyy-MM-dd-HH-mm-ss via the `date` command (no time-zone database needed here)
-        std::process::Command::new("date")
-            .arg("+%Y-%m-%d-%H-%M-%S")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| format!("{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)))
+        platform::timestamp()
     }
 
     fn save_files() -> Vec<PathBuf> {
@@ -517,7 +513,7 @@ impl eframe::App for TrackerApp {
 }
 
 fn open_path(p: &Path) {
-    let _ = std::process::Command::new("xdg-open").arg(p).spawn();
+    platform::open(p);
 }
 
 /// The "Show/Run" button: reads ShowRunCustom.txt (same format as the original) and opens
@@ -576,7 +572,7 @@ fn show_run_custom(view: &mut View) {
         } else if upper.starts_with("RUN") {
             if let Some((target, rest)) = quoted(line) {
                 if target.starts_with("http://") || target.starts_with("https://") {
-                    let _ = std::process::Command::new("xdg-open").arg(&target).spawn();
+                    platform::open(&target);
                     done += 1;
                 } else {
                     match std::process::Command::new(resolve(&target)).args(rest.split_whitespace()).spawn() {

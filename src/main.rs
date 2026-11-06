@@ -27,6 +27,7 @@ usage: z1r-tracker [options] [save-file.json]
   --quest 1|2|mixed1|mixed2|blank   start straight away with that overworld
   --load <file.json>                open a saved tracker (the original's save files work too)
   --screenshot <file.png>           draw the window, save a picture of it and exit
+  --write-icon <file.png>           save the program's logo (128 x 128) and exit, e.g. for an AppImage
 ";
 
 #[derive(Default)]
@@ -43,6 +44,14 @@ fn parse_args() -> Result<Options, String> {
         let mut next = |name: &str| args.next().ok_or_else(|| format!("{name} needs a value"));
         match a.as_str() {
             "--screenshot" => o.screenshot = Some(PathBuf::from(next("--screenshot")?)),
+            "--write-icon" => {
+                let path = next("--write-icon")?;
+                let icon = art::window_icon();
+                match image::save_buffer(&path, &icon.rgba, icon.width, icon.height, image::ColorType::Rgba8) {
+                    Ok(()) => std::process::exit(0),
+                    Err(e) => return Err(format!("could not write {path}: {e}")),
+                }
+            }
             "--load" => o.load = Some(PathBuf::from(next("--load")?)),
             "--quest" => {
                 o.quest = Some(match next("--quest")?.to_lowercase().as_str() {

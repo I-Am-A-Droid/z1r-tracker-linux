@@ -19,6 +19,12 @@ installed.
 
 ## Download
 
+**Linux:** download `Z-Tracker-x86_64.AppImage`, make it executable (right-click > Properties > Permissions >
+"Allow executing", or `chmod +x Z-Tracker-x86_64.AppImage`) and run it. It works on most 64-bit Linux systems from
+about 2018 on (glibc 2.28 or newer). If it says FUSE is missing, run it with `--appimage-extract-and-run`, or install
+your system's `fuse2`/`libfuse2` package. To make it yourself: `linux/make-appimage.sh` (needs appimagetool; with
+cargo-zigbuild it is built for glibc 2.28).
+
 **Windows:** run `z1r-tracker-setup.exe` to install (no administrator rights needed; it adds a Start Menu entry, an
 optional desktop shortcut and an uninstaller), or unzip `z1r-tracker-windows-x86_64.zip` and run `z1r-tracker.exe`
 from anywhere. Windows may warn that the program is from an unknown publisher, because it isn't signed:
@@ -28,7 +34,7 @@ and saves.
 To make those files yourself on Linux: `cargo zigbuild --release --target x86_64-pc-windows-gnu`
 (needs `pip install ziglang` and `cargo install cargo-zigbuild`), then compile `windows/installer.iss` with Inno Setup.
 
-Every upload to GitHub builds the program for Linux, Windows (`z1r-tracker.exe` and the installer) and macOS (the `.dmg`):
+Every upload to GitHub builds the program for Linux (also as an AppImage), Windows (`z1r-tracker.exe` and the installer) and macOS (the `.dmg`):
 open the latest run under the repository's **Actions** tab and download it from **Artifacts**. Tagged versions
 (e.g. `v2.1.0`) are also published under **Releases**.
 

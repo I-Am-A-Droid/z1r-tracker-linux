@@ -777,3 +777,10 @@ OverworldData.fs.
 - Applied: `Tracker::legal_here` / `Tracker::can_use` (tested): the Armos mark is greyed out in the pop-up and refused
   (with "Armos can't go here (no Armos statues on this screen)") on other screens and on the blank map. Before, it
   could be put anywhere.
+
+## Linux AppImage (asked for)
+`linux/make-appimage.sh` builds the program against glibc 2.28 with `cargo zigbuild --target
+x86_64-unknown-linux-gnu.2.28` (it needs only libc, libm, libpthread, libdl, librt at start; the graphics and window
+libraries are loaded when it runs), saves its logo with `--write-icon`, writes Z-Tracker.AppDir (AppRun,
+z1r-tracker.desktop, icon) and packs it with appimagetool into `dist/Z-Tracker-x86_64.AppImage` (about 7 MB). The
+GitHub job `linux-appimage` does the same on every upload. Tested here: the AppImage starts and draws the tracker.

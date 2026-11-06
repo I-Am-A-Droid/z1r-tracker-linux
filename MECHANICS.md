@@ -627,3 +627,18 @@ In the original the Starting Items and Extra Drops panel comes with two referenc
   (1,1.5) (2,1) (2.5,1.5) × N. N = 80 there; 52 here so both areas fit under the panel.
 - Clicks on both areas are swallowed (they don't close the panel).
 Applied: `View::draw_extras_references`, `View::draw_triforce_map`, `View::extras_reference_rects`.
+
+## Triforce "haves" with hidden dungeon numbers (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "quest-item-reference": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `TrackerModel::GetTriforceHaves` (token 0x060002fc, RVA 0x9c4c): normally haves[i] = dungeon i's triforce. With
+  hidden dungeon numbers: for each dungeon whose triforce is ticked and whose label is '1'..'8', haves[label − '1'] =
+  true; and haves[i] = true for each starting piece i.
+- `TrackerModel::doesPlayerHaveTriforceAndWhichDungeonIndexIsIt` (token 0x06000378, RVA 0xb150): normally (dungeon t's
+  triforce, t). Hidden numbers: idx = the last dungeon labelled '1'+t, or −1; had = (idx ≠ −1 and its triforce) or
+  starting piece t. The recorder destinations use idx (skipped when −1).
+- `Dungeon::DrawTriforceMapCore` (token 0x06002533, RVA 0x831bc), `Dungeon::tri@447` (token 0x06002532, RVA 0x83174),
+  `Dungeon::get_TRIFORCE_SIZE` = 80: triangles DarkSlateBlue edge 2 on black, orange with black label when had, labels
+  bold white on transparent otherwise — as the rebuild draws them.
+- Applied: `Tracker::triforce_haves` (used by the reference diagram) and `Tracker::triforce_for` (used by the recorder
+  destinations). Before, with hidden dungeon numbers both used the dungeon's tab position instead of its label.

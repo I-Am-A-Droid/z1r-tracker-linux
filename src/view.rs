@@ -1352,7 +1352,7 @@ impl View {
         line(self, right.min.y + 6.0, "Reference diagram - don't click here");
         line(self, right.min.y + 24.0, "(Note: in Mixed Quest dungeons,");
         line(self, right.min.y + 40.0, "7 and 8 may be swapped)");
-        let haves: [bool; 8] = std::array::from_fn(|i| self.m.dungeons[i].triforce || (self.m.hidden_dungeon_numbers && self.m.starting_triforces[i]));
+        let haves = self.m.triforce_haves();
         line(self, right.min.y + 66.0, "First Quest or Shapes dungeons");
         self.draw_triforce_map(p, Pos2::new(right.min.x + 13.0, right.min.y + 86.0), haves, "12345678");
         line(self, right.min.y + 92.0 + n * 2.0, "Second Quest dungeons");

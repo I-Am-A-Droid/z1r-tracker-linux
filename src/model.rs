@@ -419,6 +419,37 @@ impl Tracker {
         n
     }
 
+    /// Whether triforce t (0-7) is had, and which dungeon it belongs to (TrackerModel::
+    /// doesPlayerHaveTriforceAndWhichDungeonIndexIsIt, token 0x06000378, RVA 0xb150). Normally dungeon t. With hidden
+    /// dungeon numbers: the (last) dungeon labelled '1'+t, if any; had when that dungeon's triforce is ticked or the
+    /// starting piece t is.
+    pub fn triforce_for(&self, t: usize) -> (bool, Option<usize>) {
+        if !self.hidden_dungeon_numbers {
+            return (self.dungeons[t].triforce, Some(t));
+        }
+        let label = ((b'1' + t as u8) as char).to_string();
+        let idx = (0..8).filter(|&d| self.dungeons[d].label_char == label).last();
+        (idx.is_some_and(|d| self.dungeons[d].triforce) || self.starting_triforces[t], idx)
+    }
+
+    /// Which triforce pieces 1-8 are had (TrackerModel::GetTriforceHaves, token 0x060002fc, RVA 0x9c4c): normally each
+    /// dungeon's own; with hidden dungeon numbers, a dungeon labelled '1'..'8' with its triforce ticked fills that
+    /// number, and so does starting piece t.
+    pub fn triforce_haves(&self) -> [bool; 8] {
+        if !self.hidden_dungeon_numbers {
+            return std::array::from_fn(|i| self.dungeons[i].triforce);
+        }
+        let mut h = self.starting_triforces;
+        for d in &self.dungeons[..8] {
+            if d.triforce {
+                if let Some(c) = d.label_char.chars().next().filter(|c| ('1'..='8').contains(c)) {
+                    h[(c as u8 - b'1') as usize] = true;
+                }
+            }
+        }
+        h
+    }
+
     /// Where the recorder's whirlwind can take the player, with the dungeon index (0-7) of each (TrackerModel.fs,
     /// `recorderDests`; in 2.1.0 TrackerModel::allUIEventingLogic): nothing without the recorder; otherwise for each
     /// triforce t whose "have" equals "not RecorderToUnbeatenDungeons" (so normally the dungeons beaten), either that
@@ -432,13 +463,14 @@ impl Tracker {
         }
         let mut v = vec![];
         for t in 0..8 {
-            let has = if self.hidden_dungeon_numbers { self.starting_triforces[t] || self.dungeons[t].triforce } else { self.dungeons[t].triforce };
+            let (has, idx) = self.triforce_for(t);
             if has == self.recorder_to_unbeaten {
                 continue;
             }
             if self.recorder_to_new {
-                if let Some(pos) = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).find(|&(x, y)| self.mark[x][y] == t as i32) {
-                    v.push((pos, t));
+                let Some(d) = idx else { continue };
+                if let Some(pos) = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).find(|&(x, y)| self.mark[x][y] == d as i32) {
+                    v.push((pos, d));
                 }
             } else {
                 v.push((VANILLA_1Q[t], t));
@@ -850,6 +882,21 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn triforce_haves_follow_hidden_dungeon_labels() {
+        let mut t = Tracker::new();
+        t.dungeons[0].triforce = true;
+        assert_eq!(t.triforce_haves()[0], true);
+        t.hidden_dungeon_numbers = true;
+        // dungeon A (index 0) not labelled yet: its triforce doesn't fill any number
+        assert_eq!(t.triforce_haves(), [false; 8]);
+        t.dungeons[0].label_char = "5".into();
+        assert_eq!(t.triforce_haves(), [false, false, false, false, true, false, false, false]);
+        assert_eq!(t.triforce_for(4), (true, Some(0)));
+        t.starting_triforces[1] = true;
+        assert_eq!(t.triforce_for(1), (true, None));
     }
 
     #[test]

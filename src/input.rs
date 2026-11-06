@@ -270,6 +270,16 @@ impl View {
                 }
             }
             Action::Options => self.choose_option(i),
+            Action::HideTiles => {
+                if let Some((k, _)) = HIDE_TILE_OPTIONS.get(i) {
+                    let v = !self.settings.get(k);
+                    self.settings.set(k, v);
+                }
+                let c = self.hide_tiles_choices();
+                if let Some(p) = &mut self.popup {
+                    p.choices = c;
+                }
+            }
             Action::Hints => {
                 if i < 11 {
                     self.m.location_hints[i] = (self.m.location_hints[i] + if right { 10 } else { 1 }) % 11;
@@ -344,6 +354,12 @@ impl View {
         } else if i == n + 5 {
             self.popup = None;
             self.commands.push("ChooseCustomMap");
+            return;
+        } else if i == n + 6 {
+            let mut pop = Popup::new("Hide these map tiles until Zelda is rescued", 1, 420.0, 24.0, Pos2::new(W / 2.0, 80.0), Action::HideTiles);
+            pop.keep_open = true;
+            pop.choices = self.hide_tiles_choices();
+            self.popup = Some(pop);
             return;
         }
         let c = self.options_choices();
@@ -757,7 +773,15 @@ impl View {
         v.push(Choice::new(Icon::None, "Open the saves folder", crate::settings::save_dir().display().to_string()));
         v.push(Choice::new(Icon::None, "Start over with a new seed", "Clears everything"));
         v.push(Choice::new(Icon::None, "Overworld picture for the blank map...", "A .png of the whole overworld"));
+        v.push(Choice::new(Icon::None, "Hide map tiles until Zelda is rescued...", "Shown like don't care"));
         v
+    }
+
+    fn hide_tiles_choices(&self) -> Vec<Choice> {
+        HIDE_TILE_OPTIONS
+            .iter()
+            .map(|(k, l)| Choice::new(Icon::None, format!("{}{l}", if self.settings.get(k) { "[x] " } else { "[  ] " }), *l))
+            .collect()
     }
 
     fn open_options(&mut self) {

@@ -123,6 +123,7 @@ pub enum Action {
     ResetTimer,
     StartOver,
     Options,
+    HideTiles,
     Hints,
     Starting,
     LoadList(Vec<PathBuf>),
@@ -644,8 +645,12 @@ impl View {
                     self.fill(p, r, Color32::from_rgb(v(40.0), v(90.0), v(40.0)));
                     self.stroke(p, r, 1.0, Color32::BLACK);
                 }
-                if mark >= 0 && mark != DARK_X {
-                    self.draw_mark(p, r, mark, self.m.extra[x][y]);
+                // a hidden kind of tile looks like "don't care": darkened, without its marker
+                let settings = &self.settings;
+                let hidden = self.m.tile_hidden(x, y, &|k| settings.get(k));
+                if mark >= 0 && mark != DARK_X && !hidden {
+                    let shop_items = self.m.shop_items_shown(x, y, &|k| settings.get(k));
+                    self.draw_mark(p, r, mark, self.m.extra[x][y], shop_items);
                 }
                 // circle value: last two digits 0 = no circle, 1 = plain circle, else the label's character; hundreds = colour
                 let circle = self.m.circle[x][y];
@@ -722,8 +727,9 @@ impl View {
         }
     }
 
-    fn draw_mark(&mut self, p: &Painter, tile: Rect, mark: i32, extra: i32) {
-        if (SHOP_FIRST..=SHOP_LAST).contains(&mark) && self.draw_shop(p, tile, mark, extra) {
+    /// `shop_items`: for a shop, the items it shows (see Tracker::shop_items_shown).
+    fn draw_mark(&mut self, p: &Painter, tile: Rect, mark: i32, extra: i32, shop_items: Vec<i32>) {
+        if (SHOP_FIRST..=SHOP_LAST).contains(&mark) && self.draw_shop(p, tile, &shop_items) {
             return;
         }
         // the mark is a small badge centered on the tile, so the map stays visible around it
@@ -783,12 +789,11 @@ impl View {
     /// One item: a 15x27 box with the item 3 px in (Graphics .cctor, theInteriorBmpTable). Two items: a 27x27 box with
     /// the items 3 px and 15 px in (OverworldMapTileCustomization::makeTwoItemShopBmp$cont@133).
     /// On request the box is centered on the tile (the original puts it at (3,3) / (9,3)).
-    fn draw_shop(&mut self, p: &Painter, tile: Rect, mark: i32, extra: i32) -> bool {
-        let first = mark - SHOP_FIRST; // 0..7
-        let second = if (1..=8).contains(&extra) && extra - 1 != first { Some(extra - 1) } else { None };
-        let (box_r, spots) = match second {
-            None => (centered_in(tile, 15.0, 27.0), vec![(first, 3.0)]),
-            Some(s) => (centered_in(tile, 27.0, 27.0), vec![(first, 3.0), (s, 15.0)]),
+    fn draw_shop(&mut self, p: &Painter, tile: Rect, items: &[i32]) -> bool {
+        let (box_r, spots) = match *items {
+            [] => return false,
+            [one] => (centered_in(tile, 15.0, 27.0), vec![(one, 3.0)]),
+            [a, b, ..] => (centered_in(tile, 27.0, 27.0), vec![(a, 3.0), (b, 15.0)]),
         };
         self.stroke(p, box_r.expand(1.0), 1.0, Color32::BLACK);
         self.fill(p, box_r, SHOP_ITEM_BACKGROUND);

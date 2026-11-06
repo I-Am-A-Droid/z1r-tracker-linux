@@ -453,3 +453,28 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
 ## No X on "don't care" screens (changed on request)
 The faint X on "don't care" map screens is removed: they are only darkened (by the same 0.55 as marked screens). The
 "don't care" choice in the pop-up and the key under the map still show the X marker picture.
+
+## Hiding kinds of map tiles until Zelda is rescued (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "GetIconBMPAndExtraDecorations": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- Settings `HideOverworldTile_Sword3/Sword2/Sword1/LargeSecret/MediumSecret/SmallSecret/DoorRepair/MoneyMakingGame/
+  TheLetter/Armos/HintShop/TakeAny/Shop` and `HideOverworldTile_AlwaysHideMeatShops` (TrackerModelOptions/
+  OverworldTilesToHide; all false by default). Mark → option:
+  `TrackerModel/MapSquareChoiceDomainHelper::AsTrackerModelOptionsOverworldTilesToHide` (token 0x06000416, RVA 0xd1f4):
+  13-15 sword caves 3/2/1, 25-27 secrets large/medium/small, 28 door repair, 29 money game, 30 letter, 31 Armos,
+  32 hint shop, 33 Take Any, 16 (every shop) Shop.
+- `OverworldMapTileCustomization::ShouldHide` (token 0x06001ab3, RVA 0x5975c): false if the screen is temporarily
+  shown (a press-and-hold "show hidden" feature, not rebuilt) or Zelda is rescued; otherwise the option's value.
+- `OverworldMapTileCustomization::GetIconBMPAndExtraDecorations` (IL listing line 124227): for a hideable kind, if
+  the tile's extra data equals the mark (something was taken there) it is shown; else it is hidden when ShouldHide.
+  A hidden tile is drawn by `redrawGridSpot$cont@602` like "don't care" (no marker).
+- Shops (`GetIconBMPAndExtraDecorations$cont@215`): the shop's items are its own and the extra one; with ShouldHide(16)
+  the ones `IsHideableShopItem` (token 0x06001ab4, RVA 0x59790) says are no longer needed are dropped — arrow when
+  ArrowLevel > 0, book when PlayerHasBoomBook, candle when CandleLevel > 0, ring when RingLevel > 0, key when
+  HaveAnyKey, meat only with AlwaysHideMeatShops; bombs and shield never. Three, two or one left: that shop picture;
+  none left: hidden.
+- Applied: `Tracker::tile_hidden` and `Tracker::shop_items_shown` (src/model.rs), `data::hide_option_for`; hidden
+  tiles are darkened without their marker, shops show only the items still needed. The options are under Options >
+  "Hide map tiles until Zelda is rescued..." and use the original's setting names, so a shared settings file works
+  both ways. Arrow level counts the wood arrow (progress) or silver arrow, candle the blue or red candle, ring the blue
+  or red ring, key the magic key.

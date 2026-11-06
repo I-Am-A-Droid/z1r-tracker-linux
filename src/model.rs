@@ -293,6 +293,57 @@ impl Tracker {
         self.starting[key]
     }
 
+    /// The original's `ShouldHide` (OverworldMapTileCustomization::ShouldHide, token 0x06001ab3, RVA 0x5975c): a kind of
+    /// tile is hidden when its "HideOverworldTile_…" option is on, but never once Zelda is rescued.
+    fn should_hide(&self, mark: i32, opt: &dyn Fn(&str) -> bool) -> bool {
+        !self.prog("PlayerHasRescuedZelda") && crate::data::hide_option_for(mark).is_some_and(opt)
+    }
+
+    /// A shop item the player no longer needs (OverworldMapTileCustomization::IsHideableShopItem, token 0x06001ab4,
+    /// RVA 0x59790): arrows once any arrow is had, the book once "boomerang or book" is, a candle, a ring, a key
+    /// (magic key), and meat only with "HideOverworldTile_AlwaysHideMeatShops". Bombs and the shield always stay.
+    fn shop_item_no_longer_needed(&self, item: i32, opt: &dyn Fn(&str) -> bool) -> bool {
+        match item {
+            0 => self.prog("PlayerHasWoodArrow") || self.player_has_item(11),
+            2 => self.prog("PlayerHasBoomBook"),
+            3 => self.prog("PlayerHasBlueCandle") || self.player_has_item(9),
+            4 => self.prog("PlayerHasBlueRing") || self.player_has_item(10),
+            6 => self.player_has_item(6),
+            5 => opt("HideOverworldTile_AlwaysHideMeatShops"),
+            _ => false,
+        }
+    }
+
+    /// The items a shop shows (0-7, see SHOP_ITEM_NAMES): its own and the second one recorded with it; with
+    /// "HideOverworldTile_Shop" on, the ones no longer needed are left out (GetIconBMPAndExtraDecorations$cont@215).
+    pub fn shop_items_shown(&self, x: usize, y: usize, opt: &dyn Fn(&str) -> bool) -> Vec<i32> {
+        let mark = self.mark[x][y];
+        if !(crate::data::SHOP_FIRST..=crate::data::SHOP_LAST).contains(&mark) {
+            return vec![];
+        }
+        let first = mark - crate::data::SHOP_FIRST;
+        let extra = self.extra[x][y];
+        let mut items = vec![first];
+        if (1..=8).contains(&extra) && extra - 1 != first {
+            items.push(extra - 1);
+        }
+        if self.should_hide(crate::data::SHOP_FIRST, opt) {
+            items.retain(|&i| !self.shop_item_no_longer_needed(i, opt));
+        }
+        items
+    }
+
+    /// Whether a marked screen is shown as "don't care" because its kind is hidden
+    /// (OverworldMapTileCustomization::GetIconBMPAndExtraDecorations, IL listing line 124227): a shop when none of
+    /// its items is left to show; any other hideable kind unless something was taken there (extra data = the mark).
+    pub fn tile_hidden(&self, x: usize, y: usize, opt: &dyn Fn(&str) -> bool) -> bool {
+        let mark = self.mark[x][y];
+        if (crate::data::SHOP_FIRST..=crate::data::SHOP_LAST).contains(&mark) {
+            return self.shop_items_shown(x, y, opt).is_empty();
+        }
+        self.extra[x][y] != mark && self.should_hide(mark, opt)
+    }
+
     pub fn prog(&self, key: &str) -> bool {
         self.progress.get(key).copied().unwrap_or(false)
     }
@@ -768,6 +819,35 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn hidden_tiles_follow_the_originals_rules() {
+        let mut t = Tracker::new();
+        t.mark[1][1] = 25; // large secret
+        t.mark[2][2] = SHOP_FIRST; // arrow shop ...
+        t.extra[2][2] = 2; // ... also selling bombs
+        t.mark[3][3] = SHOP_FIRST + 3; // candle shop
+        let none = |_: &str| false;
+        assert!(!t.tile_hidden(1, 1, &none));
+        let on = |k: &str| k == "HideOverworldTile_LargeSecret" || k == "HideOverworldTile_Shop";
+        assert!(t.tile_hidden(1, 1, &on));
+        // shops: items still needed stay
+        assert_eq!(t.shop_items_shown(2, 2, &on), vec![0, 1]);
+        t.set_prog("PlayerHasWoodArrow", true);
+        assert_eq!(t.shop_items_shown(2, 2, &on), vec![1]); // bombs are never hidden
+        assert!(!t.tile_hidden(2, 2, &on));
+        assert!(!t.tile_hidden(3, 3, &on));
+        t.set_prog("PlayerHasBlueCandle", true);
+        assert!(t.tile_hidden(3, 3, &on)); // nothing left to show
+        // something taken there (extra data = the mark) keeps it shown
+        t.extra[1][1] = 25;
+        assert!(!t.tile_hidden(1, 1, &on));
+        t.extra[1][1] = 0;
+        // nothing is hidden once Zelda is rescued
+        t.set_prog("PlayerHasRescuedZelda", true);
+        assert!(!t.tile_hidden(1, 1, &on));
+        assert!(!t.tile_hidden(3, 3, &on));
     }
 
     #[test]

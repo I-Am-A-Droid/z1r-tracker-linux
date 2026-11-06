@@ -35,6 +35,38 @@ pub const TAKE_ANY_MARK: i32 = 33;
 pub const SHOP_FIRST: i32 = 16;
 pub const SHOP_LAST: i32 = 23;
 
+/// The original's options for hiding kinds of map tiles until Zelda is rescued (Z1R_Tracker_settings.json keys,
+/// TrackerModelOptions/OverworldTilesToHide), with their labels.
+pub const HIDE_TILE_OPTIONS: [(&str, &str); 14] = [
+    ("HideOverworldTile_Sword3", "Magical sword caves (3)"),
+    ("HideOverworldTile_Sword2", "White sword caves (2)"),
+    ("HideOverworldTile_Sword1", "Wood sword caves (1)"),
+    ("HideOverworldTile_LargeSecret", "Large secrets"),
+    ("HideOverworldTile_MediumSecret", "Medium secrets"),
+    ("HideOverworldTile_SmallSecret", "Small secrets"),
+    ("HideOverworldTile_DoorRepair", "Door repair"),
+    ("HideOverworldTile_MoneyMakingGame", "Money making games"),
+    ("HideOverworldTile_TheLetter", "The letter"),
+    ("HideOverworldTile_Armos", "Armos"),
+    ("HideOverworldTile_HintShop", "Hint shops"),
+    ("HideOverworldTile_TakeAny", "Take Any"),
+    ("HideOverworldTile_Shop", "Shop items no longer needed"),
+    ("HideOverworldTile_AlwaysHideMeatShops", "Always hide meat in shops"),
+];
+
+/// Which hide option covers a mark (TrackerModel/MapSquareChoiceDomainHelper::AsTrackerModelOptionsOverworldTilesToHide,
+/// token 0x06000416, RVA 0xd1f4): marks 13-15 sword caves 3/2/1, 16-23 shops, 25-27 secrets large/medium/small,
+/// 28 door repair, 29 money game, 30 letter, 31 Armos, 32 hint shop, 33 Take Any.
+pub fn hide_option_for(mark: i32) -> Option<&'static str> {
+    let i = match mark {
+        13..=15 => mark - 13,
+        16..=23 => 12,
+        25..=33 => mark - 22,
+        _ => return None,
+    };
+    Some(HIDE_TILE_OPTIONS[i as usize].0)
+}
+
 pub struct Tile {
     pub hotkey: &'static str,
     pub name: &'static str,

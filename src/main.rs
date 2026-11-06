@@ -370,6 +370,19 @@ impl TrackerApp {
                 }
             }
             "OpenSaves" => open_path(&save_dir()),
+            "ResetKeepMaps" => {
+                // as the original: a hard save first, then the reset (OverworldItemGridUI.fs resetTrackerButton)
+                let name = format!("zt-save-manual-{}.json", Self::stamp());
+                let p = save_dir().join(&name);
+                self.save_to(&p, false);
+                if p.exists() {
+                    self.view.m.reset_keep_maps();
+                    self.view.restart_reminders();
+                    self.view.show_toast(format!("Z-Tracker data saved to file {name}. The tracker has been reset."), 6.0);
+                } else {
+                    self.view.show_toast("Z-Tracker was unable to save the tracker state to a file, so nothing was reset.", 6.0);
+                }
+            }
             "RecorderSettingsAtLegend" => self.view.open_recorder_settings(egui::Pos2::new(500.0, view::LEGEND_Y)),
             "HotKeys" => self.show_hotkeys = true,
             "ChooseCustomMap" => {

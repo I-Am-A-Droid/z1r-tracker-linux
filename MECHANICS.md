@@ -792,3 +792,17 @@ OriginalFilename Z1R_WPF.exe and ProductVersion 2.1.0.0 (FileVersion 2.1.0.2), n
 (token 0x0600004d, RVA 0x50f0) names its shortcut ZTracker.lnk with the description "Launch Z-Tracker" and sets the
 window title "Z-Tracker for Zelda 1 Randomizer". Applied: the AppImage's z1r-tracker.desktop uses Name=Z-Tracker,
 GenericName=Z-Tracker for Zelda 1 Randomizer, Comment=Launch Z-Tracker.
+
+## Reset the tracker but keep the maps (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "zt-save": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the source beside 1.2.3 (1.3.1).
+- The original's "Pause/Reset timer" pop-up has "Click here to Reset the TRACKER, (remove inventory but preserve maps)
+  for groundhog/routers/4+4 purposes." (OverworldItemGridUI.fs resetTrackerButton; the text is in 2.1.0 too). It
+  makes a manual save ("Z-Tracker data saved to file … The tracker will now be reset.", or an error and no reset),
+  then: removes every triforce; sets every item box to not had unless skipped; PlayerProgressAndTakeAnyHearts.ResetAll
+  (Take Any hearts 0; boomerang-or-book, wood sword, wood arrow, blue ring, blue candle, magical sword, Ganon, Zelda,
+  bombs off); Take Any and wood sword caves back to untaken (extra data 0), large/medium/small secrets and the letter
+  bright (extra data = the mark); dungeon maps' floor drops bright again; reminders play again. Blockers are kept.
+- Applied: Options > "Reset the tracker, keep the maps (groundhog / routers / 4+4)…" with a confirmation; it saves
+  first and resets only if the save worked (`Tracker::reset_keep_maps`, tested; the coast reminder restarts). Map
+  marks, dungeon maps, blockers, hints, notes and the timer are kept.

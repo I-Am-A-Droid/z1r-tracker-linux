@@ -365,6 +365,11 @@ impl View {
                     self.show_toast("Timer reset", 2.0);
                 }
             }
+            Action::ResetKeepMaps => {
+                if i == 0 {
+                    self.commands.push("ResetKeepMaps");
+                }
+            }
             Action::StartOver => {
                 if i == 0 {
                     self.m.started = false;
@@ -483,6 +488,9 @@ impl View {
             pop.keep_open = true;
             pop.choices = self.hide_tiles_choices();
             self.popup = Some(pop);
+            return;
+        } else if i == n + 7 {
+            self.confirm("Save, then reset the tracker but keep the maps?", Action::ResetKeepMaps, Pos2::new(W / 2.0, 200.0));
             return;
         }
         let c = self.options_choices();
@@ -922,6 +930,7 @@ impl View {
         v.push(Choice::new(Icon::None, "Start over with a new seed", "Clears everything"));
         v.push(Choice::new(Icon::None, "Overworld picture for the blank map...", "A .png of the whole overworld"));
         v.push(Choice::new(Icon::None, "Hide map tiles until Zelda is rescued...", "Shown like don't care"));
+        v.push(Choice::new(Icon::None, "Reset the tracker, keep the maps (groundhog / routers / 4+4)...", "Saves first; removes inventory but keeps the maps"));
         v
     }
 

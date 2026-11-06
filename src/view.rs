@@ -122,6 +122,7 @@ pub enum Action {
     Blocker(usize, usize),
     ResetTimer,
     StartOver,
+    ResetKeepMaps,
     Options,
     HideTiles,
     Hints,
@@ -366,6 +367,11 @@ impl View {
     /// After an autosave a disk icon shows for 300 ms (WPFUI/makeAll@2022-416: opacity 0.7, Sleep 300).
     pub fn flash_disk_icon(&mut self) {
         self.disk_until = self.now + DISK_FLASH_MS as f64 / 1000.0;
+    }
+
+    /// Reminders play again from the start (TrackerModel.ResetForGroundhogOrRoutersOrFourPlusFourEtc).
+    pub fn restart_reminders(&mut self) {
+        self.ladder_reminder_at = 0.0;
     }
 
     pub fn show_toast(&mut self, s: impl Into<String>, secs: f64) {

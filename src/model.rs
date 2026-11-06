@@ -270,6 +270,43 @@ impl Tracker {
         }
     }
 
+    /// The original's "Reset the TRACKER (remove inventory but preserve maps) for groundhog/routers/4+4 purposes"
+    /// (OverworldItemGridUI.fs, resetTrackerButton; the caller saves first): triforces removed; every item box not
+    /// had (skipped ones stay skipped); progress items and Take Any hearts cleared (PlayerProgressAndTakeAnyHearts
+    /// .ResetAll); Take Any / wood sword caves untaken again and secrets / the letter bright again. Map marks,
+    /// dungeon maps, blockers, hints, notes and the timer are kept.
+    pub fn reset_keep_maps(&mut self) {
+        for d in self.dungeons.iter_mut().take(8) {
+            d.triforce = false;
+        }
+        let reset = |b: &mut Box_| {
+            if b.has != Has::Skipped {
+                b.has = Has::No;
+            }
+        };
+        for d in self.dungeons.iter_mut() {
+            d.boxes.iter_mut().for_each(reset);
+        }
+        for b in [&mut self.white_sword_box, &mut self.ladder_box, &mut self.armos_box] {
+            reset(b);
+        }
+        self.take_any_hearts = [0; 4];
+        for k in ["PlayerHasBoomBook", "PlayerHasWoodSword", "PlayerHasWoodArrow", "PlayerHasBlueRing", "PlayerHasBlueCandle", "PlayerHasMagicalSword", "PlayerHasDefeatedGanon", "PlayerHasRescuedZelda", "PlayerHasBombs"] {
+            self.set_prog(k, false);
+        }
+        for x in 0..16 {
+            for y in 0..8 {
+                let m = self.mark[x][y];
+                if m == crate::data::TAKE_ANY_MARK || m == crate::data::WOOD_SWORD_CAVE_MARK {
+                    self.extra[x][y] = 0;
+                    self.tile_choice[x][y] = -1;
+                } else if [25, 26, 27, 30].contains(&m) {
+                    self.extra[x][y] = m;
+                }
+            }
+        }
+    }
+
     pub fn all_boxes(&self) -> Vec<&Box_> {
         let mut v: Vec<&Box_> = self.dungeons.iter().flat_map(|d| d.boxes.iter()).collect();
         v.extend([&self.third_box, &self.white_sword_box, &self.ladder_box, &self.armos_box]);
@@ -982,6 +1019,30 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn reset_keeps_the_maps_like_the_original() {
+        let mut t = Tracker::new();
+        t.mark[3][3] = 0; // level 1 found
+        t.mark[4][4] = TAKE_ANY_MARK;
+        t.extra[4][4] = TAKE_ANY_MARK; // taken
+        t.dungeons[0].triforce = true;
+        t.dungeons[0].boxes[0].cell = 3;
+        t.dungeons[0].boxes[0].has = Has::Yes;
+        t.dungeons[0].boxes[1].cell = 4;
+        t.dungeons[0].boxes[1].has = Has::Skipped;
+        t.set_prog("PlayerHasWoodSword", true);
+        t.take_any_hearts[0] = 1;
+        t.reset_keep_maps();
+        assert_eq!(t.mark[3][3], 0); // map kept
+        assert_eq!(t.mark[4][4], TAKE_ANY_MARK);
+        assert_eq!(t.extra[4][4], 0); // untaken again
+        assert!(!t.dungeons[0].triforce);
+        assert_eq!((t.dungeons[0].boxes[0].cell, t.dungeons[0].boxes[0].has), (3, Has::No)); // item kept, not had
+        assert_eq!(t.dungeons[0].boxes[1].has, Has::Skipped); // skipped stays
+        assert!(!t.prog("PlayerHasWoodSword"));
+        assert_eq!(t.take_any_hearts, [0; 4]);
     }
 
     #[test]

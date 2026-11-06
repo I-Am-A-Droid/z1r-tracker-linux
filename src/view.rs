@@ -1070,9 +1070,6 @@ impl View {
         for (i, l) in Self::START_LABELS.iter().enumerate() {
             self.button(p, rect(234.0, MAP_Y + 40.0 + i as f32 * 31.0, 300.0, 26.0), l, Target::StartChoice(i));
         }
-        if !self.assets.loaded() {
-            self.text(p, 60.0, MAP_Y + 248.0, 11.0, Color32::YELLOW, "Pictures: the original Z1R_WPF.exe was not found - using plain shapes (see Options)");
-        }
     }
 
     // ------------------------------------------------------------------ hover descriptions

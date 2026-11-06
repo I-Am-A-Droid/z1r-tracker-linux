@@ -49,8 +49,9 @@ pub fn save_dir() -> PathBuf {
     base.join("saves")
 }
 
-/// When the tracker sits in the original Z-Tracker's folder (next to Z1R_WPF.exe or Z1R_Tracker_settings.json), it
-/// keeps settings, HotKeys.txt and saves right there, as the original does: it uses AppDomain.BaseDirectory for
+/// When the tracker sits in a folder that holds a Z1R_Tracker_settings.json (for example the original Z-Tracker's
+/// folder, or a copy of the tracker kept on a USB stick), it keeps settings, HotKeys.txt and saves right there, as
+/// the original does: it uses AppDomain.BaseDirectory for
 /// Z1R_Tracker_settings.json (TrackerModelOptions::readSettings, token 0x0600075c) and for every zt-save-*.json
 /// (SaveAndLoad::SaveAll, token 0x06000013; $SaveAndLoad::.cctor for the autosave). The two then share them.
 pub fn original_folder() -> Option<PathBuf> {
@@ -79,7 +80,7 @@ fn bundle_folder(dir: &std::path::Path) -> PathBuf {
 }
 
 pub fn is_original_folder(dir: &std::path::Path) -> bool {
-    dir.join("Z1R_WPF.exe").is_file() || dir.join("Z1R_Tracker_settings.json").is_file()
+    dir.join("Z1R_Tracker_settings.json").is_file()
 }
 
 /// Opens a file, folder or web address with the system's default program.
@@ -106,10 +107,6 @@ pub fn timestamp() -> String {
 mod tests {
     #[test]
     fn recognises_the_originals_folder() {
-        let orig = std::path::Path::new("/home/jason/Downloads/ZTracker_v2.1.0.2");
-        if orig.exists() {
-            assert!(super::is_original_folder(orig));
-        }
         assert!(!super::is_original_folder(&std::env::temp_dir().join("no-such-z1r-folder")));
     }
 

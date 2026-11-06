@@ -9,10 +9,8 @@ It reads and writes the same `zt-save-*.json` files as the original, so saves mo
 
 ## Pictures
 
-No pictures from the original are included. At start-up the tracker reads them from your own copy of the original
-program, `Z1R_WPF.exe` (it looks next to the app, in the current folder, and in folders under your home and
-`~/Downloads` whose names contain "Tracker" or "Z1R"; or pass `--original /path/to/Z1R_WPF.exe`, or choose it in
-Options). Nothing in that file is run. Without it the tracker still works and draws plain shapes and letters.
+Every picture (the overworld map, items, map markers, dungeon rooms, monsters and the logo) is drawn by the program
+itself from its own pixel art. It needs no other files: the original Z-Tracker doesn't have to be installed.
 
 ## Download
 
@@ -32,8 +30,7 @@ open the latest run under the repository's **Actions** tab and download it from 
 **Mac:** open `z1r-tracker-macos.dmg` and drag **Z-Tracker** onto **Applications**. It runs on both Apple Silicon and
 Intel Macs (macOS 10.13 or later). It isn't signed by a registered Apple developer, so the first time macOS refuses to
 open it: right-click it in Applications and choose **Open**, or on newer macOS go to System Settings > Privacy &
-Security and click **Open Anyway**. Put `Z1R_WPF.exe` (or the whole original Z-Tracker folder) in the same folder as
-Z-Tracker.app if you want it to find the pictures there; it also looks in your Downloads.
+Security and click **Open Anyway**.
 
 The `.dmg` can only be made on a Mac (it needs Apple's tools): GitHub makes it on every upload (artifact
 `z1r-tracker-macos-dmg`), or run `macos/make-dmg.sh` on a Mac with `rustup target add aarch64-apple-darwin
@@ -53,11 +50,10 @@ Options:
 ```
 --quest 1|2|mixed1|mixed2|blank   start straight away with that overworld
 --load <file.json>                open a saved tracker (the original's save files work too)
---original <Z1R_WPF.exe>          where to read the tracker pictures from
 --screenshot <file.png>           draw the window, save a picture of it and exit
 ```
 
-Settings and `HotKeys.txt` are copied from the original's folder the first time (if found) and kept in:
+Settings and `HotKeys.txt` are kept in:
 
 | | settings | saves and the once-a-minute autosave |
 |---|---|---|
@@ -65,8 +61,9 @@ Settings and `HotKeys.txt` are copied from the original's folder the first time 
 | Windows | `%APPDATA%\z1r-tracker\` | `%LOCALAPPDATA%\z1r-tracker\saves\` |
 | macOS | `~/Library/Application Support/z1r-tracker/` | `~/Library/Application Support/z1r-tracker/saves/` |
 
-If you put the program in the original Z-Tracker's folder (next to `Z1R_WPF.exe`), it keeps settings, hot keys and
-saves in that folder instead, exactly like the original, so both programs share them.
+If the program's folder holds a `Z1R_Tracker_settings.json` (for example when you put it in the original Z-Tracker's
+folder), it keeps settings, hot keys and saves in that folder instead, exactly like the original, so both programs
+share them.
 
 The window can be resized freely and everything scales; when the window is wide, the dungeon maps and timeline move
 beside the overworld map.

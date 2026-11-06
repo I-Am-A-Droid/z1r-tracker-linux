@@ -160,9 +160,8 @@ potion (`potionBehavior@266`) sets it to 2, heart (`heartBehavior@271`) to 1, ca
 PlayerHasBlueCandle; leave changes nothing. Take This: wood sword (`swordBehavior@337`) turns on PlayerHasWoodSword, candle
 (`candleBehavior@334-1`) turns on PlayerHasBlueCandle. Afterwards `clo@95-12` / `clo@99-15` store the tile's extra data =
 the mark (33 / 15) when something was taken, else 0 (`TrackerModel::setOverworldMapExtraData`).
-Shop markers (pictures 23–31 of `s_icon_overworld_strip39.png`) are drawn without their black "B" (columns 1–3, rows 3–7 of each
-16×11 picture), which is painted over with the marker's own background colour when the pictures are loaded; the shop's
-own letter and item picture stay.
+Shop markers (pictures 23–31 of `s_icon_overworld_strip39.png`) have no letter "B" (asked for; the original's start with
+a black "B"). Since the tracker now draws its own pictures (see "Own pictures"), they show just the item on orange.
 
 ## Shops on the map, as the original draws them (checked 2026-11-05)
 Native tools rechecked: still only `_CorExeMain@thunk` at 0x792d6e and no strings, so this is from the IL.
@@ -288,8 +287,8 @@ Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_fin
 - `SaveAndLoad::SaveAll` (token 0x06000013): saves go to BaseDirectory + "zt-save-manual-" / "zt-save-completed-" +
   DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".json"; the autosave is BaseDirectory + "zt-save-zz-autosave.json"
   (`$SaveAndLoad::.cctor`, token 0x06000223). The rebuild uses the same names and the same local-time format.
-- Applied: when the rebuild's program sits in the original's folder (Z1R_WPF.exe or Z1R_Tracker_settings.json next to
-  it), it keeps settings, HotKeys.txt and saves in that folder like the original, so the two share them; otherwise it
+- Applied: when the rebuild's program sits in a folder with a Z1R_Tracker_settings.json (e.g. the original's folder),
+  it keeps settings, HotKeys.txt and saves in that folder like the original, so the two share them; otherwise it
   uses the per-user folders listed in README.md.
 
 ## Show/Run Custom file (checked 2026-11-06)
@@ -329,8 +328,7 @@ joins them with `lipo` into one, wraps it in Z-Tracker.app (`macos/Info.plist`),
 (Apple Silicon won't run unsigned programs at all) and packs it with an Applications shortcut into
 `z1r-tracker-macos.dmg` (hdiutil, compressed UDZO). It can't be made on Linux: linking a Mac program needs Apple's
 MacOSX SDK (cargo zigbuild stops at "unable to find system framework AppKit"). Inside an app bundle the program's own
-folder is taken to be the one holding Z-Tracker.app (`platform::program_dir`), both for finding Z1R_WPF.exe and for
-the original-folder mode, matching where the original looks (AppDomain.BaseDirectory).
+folder is taken to be the one holding Z-Tracker.app (`platform::program_dir`) for the original-folder mode, matching where the original looks (AppDomain.BaseDirectory).
 
 ## Window icon (checked 2026-11-06)
 Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "BaseDirectory": 0 matches,
@@ -338,7 +336,25 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
 `Program/MyWindow::.ctor` (token 0x0600004d, RVA 0x50f0) creates a shell link (CLSID 00021401-0000-0000-C000-000000000046)
 in its own folder (Process.MainModule.FileName's folder): description "Launch Z-Tracker", path Z1R_WPF.exe, working
 folder = that folder, icon `icons/ztlogo64x64.ico` index 0, saved as `ZTracker.lnk`. That file holds 16, 24, 32 and
-48 px pictures in 32-bit colour and a 64 px one in 16 colours. The rebuild uses this logo, read from the folder of the
-person's Z1R_WPF.exe (not shipped), as the window, taskbar and Dock icon (`Assets::window_icon`); the decoder takes the
-48 px full-colour picture. Without that file the system's usual icon is shown. (On Wayland the desktop chooses the
-icon from the app id instead.) The rebuild doesn't write ZTracker.lnk; the Windows installer makes its own shortcuts.
+48 px pictures in 32-bit colour and a 64 px one in 16 colours. Applied as: the program has a logo of its own and uses
+it as the window, taskbar and Dock icon (`art::window_icon`). (This first read the original's .ico; that was replaced
+when every picture became the tracker's own, see below. On Wayland the desktop chooses the icon from the app id.) The rebuild doesn't write ZTracker.lnk; the Windows installer makes its own shortcuts.
+
+## Own pictures (changed on request)
+Nothing is read from Z1R_WPF.exe any more: every picture is drawn by `src/art.rs` at start-up from pixel patterns
+written for this rebuild, and the reader for the original's embedded files, the search for it, `--original` and the
+Options entry are gone. The sheets keep the original's names, sizes and order (from the IL: room pictures by
+`RoomTypeGraphics::GetBmpPair`, monsters by `MonsterGraphics::LoadBitmaps`, markers by
+`$OverworldMapTileCustomization::.cctor` and the TILE_STRIP_INDEX table), so every rule above that names a picture
+number still holds:
+- `icons7x7.png` 32 items of 7×7; `icons3x7.png` 8 shop items of 3×7; `icons10x10.png` 10 pictures (triforce, Take Any
+  hearts, save disk …); `icons8x8.png` a heart.
+- `zelda_bosses16x16.png` 32 monsters and `zelda_items16x16.png` 8 floor drops, drawn as 8×8 patterns at twice the size.
+- `s_icon_overworld_strip39.png` 39 map markers of 16×11: a coloured box with letters from a 3×5 alphabet and the item
+  pictures above; `s_btn_tr_dungeon_num_strip18.png` level numbers; `new_icons13x9.png` 42 room pictures × 2 (done).
+- `s_map_overworld_strip8.png`: the overworld as 16×8 screens of 16×11 pixels, coloured from a table of which ground
+  covers each quarter-by-third of each screen (rock, water, forest, graveyard, sand, open ground; `art::TERRAIN`), with
+  a texture per ground kind. The four overworlds share it; the markers show where everything is.
+- `ZTlogo64x64.png` and the window icon: a gold triforce over "ZT" on a dark blue tile.
+Settings and HotKeys.txt are no longer copied from the original's folder on first start; the original-folder mode now
+looks only for Z1R_Tracker_settings.json. Save files stay compatible both ways.

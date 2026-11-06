@@ -3,6 +3,7 @@
 
 //! Z-Tracker for Linux: a rebuild of the Zelda 1 Randomizer tracker (Z1R_WPF) as a native Linux app.
 
+mod art;
 mod assets;
 mod data;
 mod input;
@@ -25,7 +26,6 @@ const USAGE: &str = "Z-Tracker for Linux 2.1.0
 usage: z1r-tracker [options] [save-file.json]
   --quest 1|2|mixed1|mixed2|blank   start straight away with that overworld
   --load <file.json>                open a saved tracker (the original's save files work too)
-  --original <Z1R_WPF.exe>          where to read the tracker pictures from
   --screenshot <file.png>           draw the window, save a picture of it and exit
 ";
 
@@ -33,7 +33,6 @@ usage: z1r-tracker [options] [save-file.json]
 struct Options {
     screenshot: Option<PathBuf>,
     load: Option<PathBuf>,
-    original: Option<String>,
     quest: Option<i64>,
 }
 
@@ -45,7 +44,6 @@ fn parse_args() -> Result<Options, String> {
         match a.as_str() {
             "--screenshot" => o.screenshot = Some(PathBuf::from(next("--screenshot")?)),
             "--load" => o.load = Some(PathBuf::from(next("--load")?)),
-            "--original" => o.original = Some(next("--original")?),
             "--quest" => {
                 o.quest = Some(match next("--quest")?.to_lowercase().as_str() {
                     "1" | "first" => 0,
@@ -77,14 +75,9 @@ fn main() {
         }
     };
 
-    let mut assets = Assets::default();
-    let remembered = Settings::load(None).get_str("LinuxOriginalProgramPath");
-    let explicit = opts.original.clone().or(if remembered.is_empty() { None } else { Some(remembered) });
-    if !assets.try_load(explicit.as_deref()) {
-        eprintln!("The original Z1R_WPF.exe was not found; drawing plain shapes instead of its pictures.");
-    }
-    let settings = Settings::load(assets.original.as_deref());
-    let hotkeys = HotKeys::load(assets.original.as_deref());
+    let assets = Assets::new();
+    let settings = Settings::load();
+    let hotkeys = HotKeys::load();
     let mut view = View::new(Tracker::new(), assets, settings, hotkeys);
 
     if let Some(path) = &opts.load {
@@ -102,9 +95,6 @@ fn main() {
         view.m.reset(0);
         view.m.started = true;
     }
-    if !view.assets.loaded() {
-        view.show_toast("Original Z1R_WPF.exe not found: drawing plain shapes. Options > read the pictures from it.", 8.0);
-    }
 
     let scale = if view.settings.get("SmallerAppWindow") { view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(MIN_WINDOW_FACTOR, MAX_WINDOW_FACTOR) as f32 } else { 1.0 };
     let mut viewport = egui::ViewportBuilder::default()
@@ -112,10 +102,8 @@ fn main() {
         .with_app_id("z1r-tracker")
         .with_inner_size(start_size(scale))
         .with_min_inner_size([W * 0.4, H * 0.4]);
-    // the original's logo in the title bar, taskbar and Dock, when the original's folder has it
-    if let Some(logo) = view.assets.window_icon() {
-        viewport = viewport.with_icon(std::sync::Arc::new(logo));
-    }
+    // the tracker's own logo in the title bar, taskbar and Dock
+    viewport = viewport.with_icon(std::sync::Arc::new(art::window_icon()));
     // put the window back where it was last time, like the original (MainWindowLT)
     let placed_at = if opts.screenshot.is_none() { parse_window_lt(&view.settings.get_str("MainWindowLT")) } else { None };
     if let Some((left, top)) = placed_at {
@@ -241,8 +229,6 @@ struct TrackerApp {
     frames: u32,
     shot_state: Arc<AtomicU8>, // 0 not asked, 1 asked, 2 saved, 3 failed
     show_hotkeys: bool,
-    show_original: bool,
-    original_text: String,
     zoom_set: bool,
     frames_seen: u64,
     /// where the window was asked to start, and how far the system actually put it from there (some X11 window
@@ -253,10 +239,9 @@ struct TrackerApp {
 
 impl TrackerApp {
     fn new(view: View, screenshot: Option<PathBuf>) -> Self {
-        let original_text = view.assets.original.as_ref().map(|p| p.display().to_string()).unwrap_or_default();
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
-            shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_original: false, original_text, zoom_set: false, frames_seen: 0,
+            shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, zoom_set: false, frames_seen: 0,
             placed_at: None, place_shift: None,
         }
     }
@@ -360,17 +345,7 @@ impl TrackerApp {
                 self.save_to(&p, true);
             }
             "Load" => {
-                let mut files = Self::save_files();
-                if let Some(orig) = self.view.assets.original.as_ref().and_then(|p| p.parent()) {
-                    if let Ok(rd) = std::fs::read_dir(orig) {
-                        for e in rd.flatten() {
-                            let n = e.file_name().to_string_lossy().to_string();
-                            if n.starts_with("zt-save") && n.ends_with(".json") && !files.contains(&e.path()) {
-                                files.push(e.path());
-                            }
-                        }
-                    }
-                }
+                let files = Self::save_files();
                 self.view.open_load_list(files);
             }
             "LoadAutosave" => {
@@ -383,7 +358,6 @@ impl TrackerApp {
                     self.view.show_toast("There is no autosave yet.", 3.0);
                 }
             }
-            "ChooseOriginal" => self.show_original = true,
             "OpenSaves" => open_path(&save_dir()),
             "HotKeys" => self.show_hotkeys = true,
             "ShowRun" => show_run_custom(&mut self.view),
@@ -400,7 +374,7 @@ impl TrackerApp {
             ui.label("They work while the mouse is over the matching thing. Edit the file, then press Reload.");
             ui.horizontal(|ui| {
                 if ui.button("Reload").clicked() {
-                    self.view.hotkeys = HotKeys::load(self.view.assets.original.as_deref());
+                    self.view.hotkeys = HotKeys::load();
                 }
                 if ui.button("Open HotKeys.txt").clicked() {
                     open_path(&settings::hotkeys_path());
@@ -424,24 +398,6 @@ impl TrackerApp {
         });
         self.show_hotkeys = open;
 
-        let mut open = self.show_original;
-        let mut close = false;
-        egui::Window::new("Pictures from the original").open(&mut open).default_width(520.0).show(ctx, |ui| {
-            ui.label("The tracker's pictures are read from your copy of the original program (Z1R_WPF.exe). Nothing in it is run.");
-            ui.label("Full path of Z1R_WPF.exe:");
-            ui.text_edit_singleline(&mut self.original_text);
-            if ui.button("Use this file").clicked() {
-                let path = self.original_text.trim().to_string();
-                if self.view.assets.try_load(Some(&path)) {
-                    self.view.settings.set_str("LinuxOriginalProgramPath", &path);
-                    self.view.show_toast("Pictures loaded.", 3.0);
-                    close = true;
-                } else {
-                    self.view.show_toast("That file doesn't contain the tracker's pictures.", 4.0);
-                }
-            }
-        });
-        self.show_original = open && !close;
     }
 }
 
@@ -586,22 +542,14 @@ fn open_path(p: &Path) {
 /// pictures, web pages or programs.
 fn show_run_custom(view: &mut View) {
     let path = settings::config_dir().join("ShowRunCustom.txt");
-    let orig_dir = view.assets.original.as_ref().and_then(|p| p.parent()).map(|p| p.to_path_buf());
     if !path.exists() {
-        match orig_dir.as_ref().map(|d| d.join("ShowRunCustom.txt")).filter(|p| p.exists()) {
-            Some(o) => {
-                let _ = std::fs::copy(o, &path);
-            }
-            None => {
-                let _ = std::fs::write(
-                    &path,
-                    "# Z-Tracker for Linux - ShowRunCustom file\n\
-                     # Lines: SHOW \"/path/to/picture.png\"  or  RUN \"/path/to/program\" arguments  or  RUN \"https://a.web/page\"\n\
-                     # Remove the '#' in front of a line to use it, then click Show/Run in the tracker.\n\n\
-                     # RUN \"https://z1r.fandom.com/wiki/Maps\"\n",
-                );
-            }
-        }
+        let _ = std::fs::write(
+            &path,
+            "# Z-Tracker for Linux - ShowRunCustom file\n\
+             # Lines: SHOW \"/path/to/picture.png\"  or  RUN \"/path/to/program\" arguments  or  RUN \"https://a.web/page\"\n\
+             # Remove the '#' in front of a line to use it, then click Show/Run in the tracker.\n\n\
+             # RUN \"https://z1r.fandom.com/wiki/Maps\"\n",
+        );
     }
     let resolve = |s: &str| -> PathBuf {
         let s = s.replace('\\', "/");
@@ -609,7 +557,7 @@ fn show_run_custom(view: &mut View) {
         if p.is_absolute() {
             p
         } else {
-            orig_dir.clone().unwrap_or_else(settings::config_dir).join(s.trim_start_matches("./"))
+            settings::config_dir().join(s.trim_start_matches("./"))
         }
     };
     let text = std::fs::read_to_string(&path).unwrap_or_default();

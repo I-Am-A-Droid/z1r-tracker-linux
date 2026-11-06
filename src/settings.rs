@@ -6,7 +6,7 @@ use crate::data::*;
 use eframe::egui::{Key, Modifiers};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub use crate::platform::{config_dir, save_dir};
 
@@ -36,19 +36,11 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn load(original_exe: Option<&Path>) -> Settings {
+    pub fn load() -> Settings {
         let dir = config_dir();
         let _ = std::fs::create_dir_all(&dir);
         let _ = std::fs::create_dir_all(save_dir());
         let path = dir.join("Z1R_Tracker_settings.json");
-        // first run: start from the original's settings file if it sits next to the original program
-        if !path.exists() {
-            if let Some(orig) = original_exe.and_then(|p| p.parent()).map(|d| d.join("Z1R_Tracker_settings.json")) {
-                if orig.exists() {
-                    let _ = std::fs::copy(&orig, &path);
-                }
-            }
-        }
         let obj = std::fs::read_to_string(&path)
             .ok()
             .and_then(|s| serde_json::from_str::<Value>(&crate::model::strip_trailing_commas(&s)).ok())
@@ -121,19 +113,11 @@ pub fn hotkeys_path() -> PathBuf {
 }
 
 impl HotKeys {
-    pub fn load(original_exe: Option<&Path>) -> HotKeys {
+    pub fn load() -> HotKeys {
         let mut hk = HotKeys::default();
         let path = hotkeys_path();
         if !path.exists() {
-            let orig = original_exe.and_then(|p| p.parent()).map(|d| d.join("HotKeys.txt"));
-            match orig {
-                Some(o) if o.exists() => {
-                    let _ = std::fs::copy(o, &path);
-                }
-                _ => {
-                    let _ = std::fs::write(&path, template());
-                }
-            }
+            let _ = std::fs::write(&path, template());
         }
         let text = std::fs::read_to_string(&path).unwrap_or_default();
         for (n, raw) in text.lines().enumerate() {

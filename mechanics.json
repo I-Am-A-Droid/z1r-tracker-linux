@@ -427,7 +427,7 @@
       "source": "Program/-ctor@354-61::Invoke token 0x060000b5 rva 0x7294"
     },
     {
-      "name": "logo file",
+      "name": "original logo file (no longer read)",
       "group": "window",
       "value": "icons/ztlogo64x64.ico",
       "source": "Program/MyWindow::.ctor token 0x0600004d rva 0x50f0 (IShellLink::SetIconLocation, ZTracker.lnk)"

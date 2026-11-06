@@ -337,12 +337,8 @@ impl View {
         } else if i == n + 2 {
             self.m.quest = (self.m.quest + 1) % 5;
         } else if i == n + 3 {
-            self.popup = None;
-            self.commands.push("ChooseOriginal");
-            return;
-        } else if i == n + 4 {
             self.commands.push("OpenSaves");
-        } else if i == n + 5 {
+        } else if i == n + 4 {
             self.confirm("Discard this seed and start over?", Action::StartOver, Pos2::new(W / 2.0, 200.0));
             return;
         }
@@ -750,8 +746,6 @@ impl View {
             _ => "Blank",
         };
         v.push(Choice::new(Icon::None, format!("Overworld: {q}  (click to change)"), "Change the overworld map"));
-        let orig = self.assets.original.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "not found yet".into());
-        v.push(Choice::new(Icon::None, "Read the pictures from the original Z1R_WPF.exe...", orig));
         v.push(Choice::new(Icon::None, "Open the saves folder", crate::settings::save_dir().display().to_string()));
         v.push(Choice::new(Icon::None, "Start over with a new seed", "Clears everything"));
         v
@@ -911,7 +905,7 @@ mod tests {
     use crate::settings::{HotKeys, Settings};
 
     fn view() -> View {
-        let mut v = View::new(Tracker::new(), Assets::default(), Settings::load(None), HotKeys::default());
+        let mut v = View::new(Tracker::new(), Assets::default(), Settings::load(), HotKeys::default());
         v.m.started = true;
         v
     }

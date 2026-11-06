@@ -112,6 +112,10 @@ fn main() {
         .with_app_id("z1r-tracker")
         .with_inner_size(start_size(scale))
         .with_min_inner_size([W * 0.4, H * 0.4]);
+    // the original's logo in the title bar, taskbar and Dock, when the original's folder has it
+    if let Some(logo) = view.assets.window_icon() {
+        viewport = viewport.with_icon(std::sync::Arc::new(logo));
+    }
     // put the window back where it was last time, like the original (MainWindowLT)
     let placed_at = if opts.screenshot.is_none() { parse_window_lt(&view.settings.get_str("MainWindowLT")) } else { None };
     if let Some((left, top)) = placed_at {

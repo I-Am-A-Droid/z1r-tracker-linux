@@ -331,3 +331,14 @@ joins them with `lipo` into one, wraps it in Z-Tracker.app (`macos/Info.plist`),
 MacOSX SDK (cargo zigbuild stops at "unable to find system framework AppKit"). Inside an app bundle the program's own
 folder is taken to be the one holding Z-Tracker.app (`platform::program_dir`), both for finding Z1R_WPF.exe and for
 the original-folder mode, matching where the original looks (AppDomain.BaseDirectory).
+
+## Window icon (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "BaseDirectory": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the .NET IL.
+`Program/MyWindow::.ctor` (token 0x0600004d, RVA 0x50f0) creates a shell link (CLSID 00021401-0000-0000-C000-000000000046)
+in its own folder (Process.MainModule.FileName's folder): description "Launch Z-Tracker", path Z1R_WPF.exe, working
+folder = that folder, icon `icons/ztlogo64x64.ico` index 0, saved as `ZTracker.lnk`. That file holds 16, 24, 32 and
+48 px pictures in 32-bit colour and a 64 px one in 16 colours. The rebuild uses this logo, read from the folder of the
+person's Z1R_WPF.exe (not shipped), as the window, taskbar and Dock icon (`Assets::window_icon`); the decoder takes the
+48 px full-colour picture. Without that file the system's usual icon is shown. (On Wayland the desktop chooses the
+icon from the app id instead.) The rebuild doesn't write ZTracker.lnk; the Windows installer makes its own shortcuts.

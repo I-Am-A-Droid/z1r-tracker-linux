@@ -7,6 +7,11 @@ use eframe::egui::{self, Color32, ColorImage, Pos2, Rect, TextureHandle, Texture
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+fn logo_from_ico(bytes: &[u8]) -> Option<egui::IconData> {
+    let img = image::load_from_memory_with_format(bytes, image::ImageFormat::Ico).ok()?.to_rgba8();
+    Some(egui::IconData { width: img.width(), height: img.height(), rgba: img.into_raw() })
+}
+
 pub struct Sheet {
     pub image: ColorImage,
     pub texture: Option<TextureHandle>,
@@ -18,9 +23,21 @@ pub struct Assets {
     sheets: HashMap<String, Sheet>,
 }
 
+/// The original's logo, which it gives its "Launch Z-Tracker" shortcut (ZTracker.lnk): icons/ztlogo64x64.ico in the
+/// original's folder (Program/MyWindow::.ctor, token 0x0600004d, RVA 0x50f0, IShellLink::SetIconLocation).
+pub const LOGO_FILE: &str = "icons/ztlogo64x64.ico";
+
 impl Assets {
     pub fn loaded(&self) -> bool {
         !self.sheets.is_empty()
+    }
+
+    /// The original's logo for the window and taskbar, read from the folder of the person's Z1R_WPF.exe (the best
+    /// full-colour picture in the .ico: 48x48, as its 64x64 one has only 16 colours). None when that file isn't
+    /// there; the system's usual icon is used then.
+    pub fn window_icon(&self) -> Option<egui::IconData> {
+        let bytes = std::fs::read(self.original.as_ref()?.parent()?.join(LOGO_FILE)).ok()?;
+        logo_from_ico(&bytes)
     }
 
     pub fn candidate_paths(explicit: Option<&str>) -> Vec<PathBuf> {
@@ -386,6 +403,15 @@ mod tests {
         assert!(res.contains_key("s_map_overworld_strip8.png"));
         assert!(res.contains_key("icons7x7.png"));
         assert_eq!(&res["new_icons13x9.png"][..4], b"\x89PNG");
+    }
+
+    #[test]
+    fn reads_the_originals_logo() {
+        let p = std::path::Path::new("/home/jason/Downloads/ZTracker_v2.1.0.2").join(super::LOGO_FILE);
+        let Ok(bytes) = std::fs::read(&p) else { return };
+        let logo = super::logo_from_ico(&bytes).unwrap();
+        assert!(logo.width >= 48 && logo.height >= 48, "{}x{}", logo.width, logo.height);
+        assert_eq!(logo.rgba.len(), (logo.width * logo.height * 4) as usize);
     }
 }
 

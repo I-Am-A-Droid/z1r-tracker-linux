@@ -308,3 +308,17 @@ remote desktops; Linux and macOS keep OpenGL. Z1R_RENDERER=glow|wgpu overrides t
 Linux with `cargo zigbuild --target x86_64-pc-windows-gnu`; `windows/installer.iss` makes a per-user Inno Setup installer
 (Start Menu entry, optional desktop shortcut, uninstaller). Both were tested under Wine 64-bit: the program draws the full
 tracker with the original's pictures, and the installer installs, adds shortcuts and the installed program runs.
+
+## Window position remembered (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "MainWindowLT": 0 matches, native_function_pseudocode
+0x792d6e is only `_CorExeMain@thunk`; the rule below is from the .NET IL.
+- Start: `Program/MyWindow::.ctor` (token 0x0600004d, RVA 0x50f0) reads the setting `MainWindowLT` (default `""`,
+  `<StartupCode$Z1R_Tracker>.$TrackerModelOptions` static initialiser) and, only if it matches `^(-?\d+),(-?\d+)$`,
+  sets Window.Left and Window.Top to the two numbers (double.Parse, invariant culture). Otherwise the system places it.
+- Moving: the handler `Program/-ctor@354-61::Invoke` (token 0x060000b5, RVA 0x7294) is attached to
+  `Window.LocationChanged` (`-ctor@354-57` add_LocationChanged). Each move it reads Left and Top; if either is below
+  -15999 (a minimised window) it does nothing, else it stores `sprintf "%d,%d" (int Left) (int Top)` (conv.i4, so the
+  fraction is cut off) with `set_MainWindowLT` and calls `TrackerModelOptions::writeSettings()`.
+- The rebuild does the same (`parse_window_lt`, `format_window_lt`, `remember_window_position` in src/main.rs), writing
+  the settings only when the text changes. Wayland never tells programs their window position, so there nothing is
+  saved or restored; X11, Windows and macOS work. `--screenshot` ignores the saved position.

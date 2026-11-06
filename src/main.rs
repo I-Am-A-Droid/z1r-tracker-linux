@@ -107,12 +107,18 @@ fn main() {
     }
 
     let scale = if view.settings.get("SmallerAppWindow") { view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(MIN_WINDOW_FACTOR, MAX_WINDOW_FACTOR) as f32 } else { 1.0 };
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title(WINDOW_TITLE)
+        .with_app_id("z1r-tracker")
+        .with_inner_size(start_size(scale))
+        .with_min_inner_size([W * 0.4, H * 0.4]);
+    // put the window back where it was last time, like the original (MainWindowLT)
+    let placed_at = if opts.screenshot.is_none() { parse_window_lt(&view.settings.get_str("MainWindowLT")) } else { None };
+    if let Some((left, top)) = placed_at {
+        viewport = viewport.with_position([left as f32, top as f32]);
+    }
     let native = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title(WINDOW_TITLE)
-            .with_app_id("z1r-tracker")
-            .with_inner_size(start_size(scale))
-            .with_min_inner_size([W * 0.4, H * 0.4]),
+        viewport,
         renderer: renderer(),
         ..Default::default()
     };
@@ -122,7 +128,9 @@ fn main() {
         native,
         Box::new(move |cc| {
             cc.egui_ctx.set_visuals(egui::Visuals::dark());
-            Ok(Box::new(TrackerApp::new(view, screenshot)))
+            let mut app = TrackerApp::new(view, screenshot);
+            app.placed_at = placed_at.map(|(x, y)| egui::pos2(x as f32, y as f32));
+            Ok(Box::new(app))
         }),
     );
     if let Err(e) = result {
@@ -144,6 +152,24 @@ fn start_size(scale: f32) -> [f32; 2] {
         })
         .unwrap_or([W * scale, H * scale])
 }
+
+/// The saved window position "left,top" (setting MainWindowLT). The original only uses it when it matches
+/// ^(-?\d+),(-?\d+)$ and reads both numbers with the invariant culture (Program/MyWindow::.ctor, token 0x0600004d).
+fn parse_window_lt(s: &str) -> Option<(f64, f64)> {
+    let re = regex::Regex::new(r"^(-?\d+),(-?\d+)$").ok()?;
+    let c = re.captures(s)?;
+    Some((c[1].parse().ok()?, c[2].parse().ok()?))
+}
+
+/// What the original saves each time the window moves: "%d,%d" of the whole-number left and top, but nothing while
+/// either is below -15999 (a minimised window sits at -32000) (Program/-ctor@354-61::Invoke, token 0x060000b5).
+fn format_window_lt(left: f64, top: f64) -> Option<String> {
+    if left < WINDOW_LT_MIN || top < WINDOW_LT_MIN {
+        return None;
+    }
+    Some(format!("{},{}", left as i32, top as i32))
+}
+const WINDOW_LT_MIN: f64 = -15999.0;
 
 /// The original's window title (Program/MyWindow::.ctor, token 0x0600004d).
 const WINDOW_TITLE: &str = "Z-Tracker for Zelda 1 Randomizer";
@@ -215,6 +241,10 @@ struct TrackerApp {
     original_text: String,
     zoom_set: bool,
     frames_seen: u64,
+    /// where the window was asked to start, and how far the system actually put it from there (some X11 window
+    /// managers add the title bar), so saving takes that back off and the window doesn't creep each start
+    placed_at: Option<egui::Pos2>,
+    place_shift: Option<Vec2>,
 }
 
 impl TrackerApp {
@@ -223,6 +253,25 @@ impl TrackerApp {
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
             shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_original: false, original_text, zoom_set: false, frames_seen: 0,
+            placed_at: None, place_shift: None,
+        }
+    }
+
+    /// Saves the window's position whenever it moves, like the original's LocationChanged handler. Some systems
+    /// (Wayland) never tell programs where their window is; then nothing is saved.
+    fn remember_window_position(&mut self, ctx: &egui::Context) {
+        if self.screenshot.is_some() || self.frames_seen < 3 {
+            return;
+        }
+        let zoom = ctx.zoom_factor();
+        let Some(outer) = ctx.input(|i| i.viewport().outer_rect) else { return };
+        let mut pos = outer.min * zoom; // in unzoomed points, as the window was placed
+        let shift = *self.place_shift.get_or_insert_with(|| self.placed_at.map(|p| pos - p).unwrap_or(Vec2::ZERO));
+        pos -= shift;
+        if let Some(lt) = format_window_lt(pos.x as f64, pos.y as f64) {
+            if lt != self.view.settings.get_str("MainWindowLT") {
+                self.view.settings.set_str("MainWindowLT", &lt);
+            }
         }
     }
 
@@ -418,6 +467,7 @@ impl eframe::App for TrackerApp {
         }
         self.frames_seen += 1;
         self.tick();
+        self.remember_window_position(&ctx);
 
         // scale everything to fit the window, in whichever arrangement shows it bigger: tall (768 x 967), or wide
         // (1536 x 490, dungeons and timeline beside the map). Zoomed to the largest size that fits, keeping its shape,
@@ -667,5 +717,16 @@ mod tests {
         assert!(old.contains("version '1.3.2'") && old.contains("Loading this file might not work"));
         let other = super::version_warning(r#"{"Version": "2.0.3"}"#).unwrap();
         assert!(other.contains("Loading this file will probably fail"));
+    }
+
+    #[test]
+    fn window_position_rules() {
+        assert_eq!(super::parse_window_lt("0,2"), Some((0.0, 2.0)));
+        assert_eq!(super::parse_window_lt("-1920,40"), Some((-1920.0, 40.0)));
+        assert_eq!(super::parse_window_lt(""), None);
+        assert_eq!(super::parse_window_lt("10, 20"), None);
+        assert_eq!(super::format_window_lt(100.7, -3.9).as_deref(), Some("100,-3"));
+        assert_eq!(super::format_window_lt(-32000.0, -32000.0), None);
+        assert_eq!(super::format_window_lt(-15999.0, 0.0).as_deref(), Some("-15999,0"));
     }
 }

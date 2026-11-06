@@ -406,6 +406,25 @@
       "group": "layout",
       "value": "red",
       "estimated": true
+    },
+    {
+      "name": "window position setting pattern",
+      "group": "window",
+      "value": "^(-?\\d+),(-?\\d+)$",
+      "source": "Program/MyWindow::.ctor token 0x0600004d rva 0x50f0 (MainWindowLT)"
+    },
+    {
+      "name": "window position save format",
+      "group": "window",
+      "value": "%d,%d",
+      "source": "Program/-ctor@354-61::Invoke token 0x060000b5 rva 0x7294 (LocationChanged)"
+    },
+    {
+      "name": "window position not saved below",
+      "group": "window",
+      "value": -15999,
+      "unit": "px",
+      "source": "Program/-ctor@354-61::Invoke token 0x060000b5 rva 0x7294"
     }
   ]
 }

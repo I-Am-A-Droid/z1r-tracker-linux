@@ -657,3 +657,11 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   RVA 0xec48): the box's cell is not −1 and playerHas is not NO.
 - The rebuild's `Box_::is_done` is the same rule (now tested). The coast box itself stays visible on request (see
   "Coast item box stays on F16"); `is_done` still ends the coast reminder, as in the original.
+
+## Shops for the item pointed at (asked for)
+While the mouse is over the wood arrow, bombs, blue candle or blue ring in the top section, every map screen whose
+shop sells that item (its own item or its second item; with "AllowItemIconOnNonShopTile" also any screen showing it as
+an item icon) is outlined in bold green (4 px, rgb(0,255,0)) (`view::shop_item_for_progress`, `Tracker::tile_sells`).
+The original's Mouse Hover Explainer describes the same areas as "Show locations of shops containing each item"
+(UIComponents.fs MakeMouseHoverExplainer, 1.3.1 source); there it uses its own locator highlight, here the outline
+asked for.

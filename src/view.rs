@@ -214,6 +214,20 @@ pub fn centered_in(outer: Rect, w: f32, h: f32) -> Rect {
 pub const ORANGE: Color32 = Color32::from_rgb(255, 165, 0);
 pub const LIGHT_GREEN: Color32 = Color32::from_rgb(144, 238, 144);
 pub const LIME: Color32 = Color32::from_rgb(50, 205, 50);
+/// The bold green outline on map screens whose shop sells the item pointed at in the top section.
+pub const SHOP_HIGHLIGHT: Color32 = Color32::from_rgb(0, 255, 0);
+pub const SHOP_HIGHLIGHT_W: f32 = 4.0;
+
+/// Which shop item (0-7, see SHOP_ITEM_NAMES) a top-section toggle stands for: wood arrow, bombs, blue candle, blue ring.
+pub fn shop_item_for_progress(key: &str) -> Option<i32> {
+    match key {
+        "PlayerHasWoodArrow" => Some(0),
+        "PlayerHasBombs" => Some(1),
+        "PlayerHasBlueCandle" => Some(3),
+        "PlayerHasBlueRing" => Some(4),
+        _ => None,
+    }
+}
 pub const INDIAN_RED: Color32 = Color32::from_rgb(205, 92, 92);
 // item box borders and door colours, as in the original (see MECHANICS.md)
 /// Orange behind shop items on the map (Graphics .cctor: itemBackgroundColor = Color.FromArgb(239, 131, 0)).
@@ -709,6 +723,22 @@ impl View {
                 if is_coast(x, y) {
                     let b = centered_in(r, CELL, CELL);
                     self.draw_box(p, b, BoxId::Ladder);
+                }
+            }
+        }
+        // pointing at the wood arrow, bombs, blue candle or blue ring in the top section: every map screen whose
+        // shop sells that item is outlined in bold green (asked for; the original also shows "locations of shops
+        // containing each item" when these are hovered)
+        if let Target::Progress(key) = self.hover {
+            if let Some(item) = shop_item_for_progress(key) {
+                for col in 0..16 {
+                    for y in 0..8 {
+                        let x = self.data_x(col);
+                        if self.m.tile_sells(x, y, item, self.settings.get("AllowItemIconOnNonShopTile")) {
+                            let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
+                            self.stroke(p, r.shrink(SHOP_HIGHLIGHT_W / 2.0), SHOP_HIGHLIGHT_W, SHOP_HIGHLIGHT);
+                        }
+                    }
                 }
             }
         }

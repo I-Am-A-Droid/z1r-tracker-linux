@@ -493,6 +493,12 @@ impl eframe::App for TrackerApp {
             }) {
                 self.view.hover = view::Target::MapTile(x, y);
             }
+            // Z1R_SCREENSHOT_HOVER_ITEM=PlayerHasBombs (or …WoodArrow, …BlueCandle, …BlueRing) points at that top item
+            if let Ok(k) = std::env::var("Z1R_SCREENSHOT_HOVER_ITEM") {
+                if let Some(key) = ["PlayerHasWoodArrow", "PlayerHasBombs", "PlayerHasBlueCandle", "PlayerHasBlueRing"].into_iter().find(|s| *s == k) {
+                    self.view.hover = view::Target::Progress(key);
+                }
+            }
             // Z1R_SCREENSHOT_OPEN=extras opens the Starting Items and Extra Drops panel
             if self.frames == 5 {
                 match std::env::var("Z1R_SCREENSHOT_OPEN").as_deref() {

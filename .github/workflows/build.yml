@@ -68,3 +68,23 @@ jobs:
           files: |
             dist/${{ matrix.name }}.tar.gz
             dist/z1r-tracker-setup.exe
+
+  # The Mac disk image: Z-Tracker.app for Apple Silicon and Intel in one, made with Apple's own tools.
+  macos-dmg:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - name: Make the .dmg
+        run: macos/make-dmg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: z1r-tracker-macos-dmg
+          path: dist/z1r-tracker-macos.dmg
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/z1r-tracker-macos.dmg

@@ -31,10 +31,8 @@ impl Assets {
         if let Ok(p) = std::env::var("Z1R_ORIGINAL") {
             v.push(PathBuf::from(p));
         }
-        if let Ok(exe) = std::env::current_exe() {
-            if let Some(d) = exe.parent() {
-                v.push(d.join("Z1R_WPF.exe"));
-            }
+        if let Some(d) = crate::platform::program_dir() {
+            v.push(d.join("Z1R_WPF.exe"));
         }
         if let Ok(d) = std::env::current_dir() {
             v.push(d.join("Z1R_WPF.exe"));

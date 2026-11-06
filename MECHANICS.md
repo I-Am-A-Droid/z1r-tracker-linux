@@ -322,3 +322,12 @@ Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "MainWi
 - The rebuild does the same (`parse_window_lt`, `format_window_lt`, `remember_window_position` in src/main.rs), writing
   the settings only when the text changes. Wayland never tells programs their window position, so there nothing is
   saved or restored; X11, Windows and macOS work. `--screenshot` ignores the saved position.
+
+## Mac disk image (changed on request)
+`macos/make-dmg.sh` (run on a Mac, and by the `macos-dmg` job on GitHub) builds the Apple Silicon and Intel programs,
+joins them with `lipo` into one, wraps it in Z-Tracker.app (`macos/Info.plist`), gives it an ad-hoc signature
+(Apple Silicon won't run unsigned programs at all) and packs it with an Applications shortcut into
+`z1r-tracker-macos.dmg` (hdiutil, compressed UDZO). It can't be made on Linux: linking a Mac program needs Apple's
+MacOSX SDK (cargo zigbuild stops at "unable to find system framework AppKit"). Inside an app bundle the program's own
+folder is taken to be the one holding Z-Tracker.app (`platform::program_dir`), both for finding Z1R_WPF.exe and for
+the original-folder mode, matching where the original looks (AppDomain.BaseDirectory).

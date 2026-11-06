@@ -25,12 +25,19 @@ and saves.
 To make those files yourself on Linux: `cargo zigbuild --release --target x86_64-pc-windows-gnu`
 (needs `pip install ziglang` and `cargo install cargo-zigbuild`), then compile `windows/installer.iss` with Inno Setup.
 
-Every upload to GitHub builds the program for Linux, Windows (`z1r-tracker.exe`) and macOS (Apple Silicon and Intel):
+Every upload to GitHub builds the program for Linux, Windows (`z1r-tracker.exe` and the installer) and macOS (the `.dmg`):
 open the latest run under the repository's **Actions** tab and download it from **Artifacts**. Tagged versions
 (e.g. `v2.1.0`) are also published under **Releases**.
 
-On macOS the program isn't signed: the first time, right-click it and choose **Open** (or allow it under
-System Settings > Privacy & Security).
+**Mac:** open `z1r-tracker-macos.dmg` and drag **Z-Tracker** onto **Applications**. It runs on both Apple Silicon and
+Intel Macs (macOS 10.13 or later). It isn't signed by a registered Apple developer, so the first time macOS refuses to
+open it: right-click it in Applications and choose **Open**, or on newer macOS go to System Settings > Privacy &
+Security and click **Open Anyway**. Put `Z1R_WPF.exe` (or the whole original Z-Tracker folder) in the same folder as
+Z-Tracker.app if you want it to find the pictures there; it also looks in your Downloads.
+
+The `.dmg` can only be made on a Mac (it needs Apple's tools): GitHub makes it on every upload (artifact
+`z1r-tracker-macos-dmg`), or run `macos/make-dmg.sh` on a Mac with `rustup target add aarch64-apple-darwin
+x86_64-apple-darwin`.
 
 ## Build and run
 

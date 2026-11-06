@@ -54,8 +54,28 @@ pub fn save_dir() -> PathBuf {
 /// Z1R_Tracker_settings.json (TrackerModelOptions::readSettings, token 0x0600075c) and for every zt-save-*.json
 /// (SaveAndLoad::SaveAll, token 0x06000013; $SaveAndLoad::.cctor for the autosave). The two then share them.
 pub fn original_folder() -> Option<PathBuf> {
+    program_dir().filter(|d| is_original_folder(d))
+}
+
+/// The folder the program sits in. For a macOS app (Z-Tracker.app/Contents/MacOS/z1r-tracker) that is the folder
+/// holding Z-Tracker.app, which is what the person sees in Finder.
+pub fn program_dir() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
-    is_original_folder(exe.parent()?).then(|| exe.parent().unwrap().to_path_buf())
+    Some(bundle_folder(exe.parent()?))
+}
+
+fn bundle_folder(dir: &std::path::Path) -> PathBuf {
+    let name = |p: &std::path::Path| p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    if let Some(contents) = dir.parent().filter(|_| name(dir) == "MacOS") {
+        if let Some(app) = contents.parent().filter(|_| name(contents) == "Contents") {
+            if name(app).ends_with(".app") {
+                if let Some(outside) = app.parent() {
+                    return outside.to_path_buf();
+                }
+            }
+        }
+    }
+    dir.to_path_buf()
 }
 
 pub fn is_original_folder(dir: &std::path::Path) -> bool {
@@ -91,5 +111,13 @@ mod tests {
             assert!(super::is_original_folder(orig));
         }
         assert!(!super::is_original_folder(&std::env::temp_dir().join("no-such-z1r-folder")));
+    }
+
+    #[test]
+    fn program_folder_of_a_mac_app_is_outside_it() {
+        use std::path::Path;
+        assert_eq!(super::bundle_folder(Path::new("/Applications/Z-Tracker.app/Contents/MacOS")), Path::new("/Applications"));
+        assert_eq!(super::bundle_folder(Path::new("/home/me/ZTracker")), Path::new("/home/me/ZTracker"));
+        assert_eq!(super::bundle_folder(Path::new("/x/Contents/MacOS")), Path::new("/x/Contents/MacOS"));
     }
 }

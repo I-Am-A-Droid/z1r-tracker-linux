@@ -31,16 +31,16 @@ pub fn with_hotkey(desc: String, key: Option<String>) -> String {
 pub const PICKER_BLANK: i32 = -99;
 /// The marking pop-up's rows, as asked for (marks; -1 = none):
 /// don't care, none, arrow, bomb, key, meat, candle, shield, ring (the book shop is left out);
+/// unknown, large, medium, small secret, door repair, money making game, Take Any, potion shop, hint shop;
 /// levels 1-9;
 /// any roads 1-4, wood sword, white sword, magical sword caves, Armos, the letter;
-/// unknown, large, medium, small secret, door repair, money making game;
-/// Take Any, potion shop, hint shop, Start, P2.
+/// Start, P2.
 pub const MARK_PICKER_LAYOUT: [[i32; MARK_PICKER_COLS]; 5] = [
     [35, -1, 16, 17, 22, 21, 19, 23, 20],
+    [24, 25, 26, 27, 28, 29, 33, 34, 32],
     [0, 1, 2, 3, 4, 5, 6, 7, 8],
     [9, 10, 11, 12, 15, 14, 13, 31, 30],
-    [24, 25, 26, 27, 28, 29, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK],
-    [33, 34, 32, 36, 37, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK],
+    [36, 37, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK],
 ];
 
 /// Where the marking pop-up goes, as in the original (WPFUI::activatePopup@703-45, token in the IL listing at line
@@ -1266,7 +1266,9 @@ mod tests {
         want.sort();
         assert_eq!(got, want);
         assert_eq!(MARK_PICKER_LAYOUT[0][..2], [35, -1]); // don't care, none
-        assert_eq!(MARK_PICKER_LAYOUT[1], [0, 1, 2, 3, 4, 5, 6, 7, 8]); // levels 1-9
+        assert_eq!(MARK_PICKER_LAYOUT[1], [24, 25, 26, 27, 28, 29, 33, 34, 32]); // secrets, door repair … hint shop
+        assert_eq!(MARK_PICKER_LAYOUT[2], [0, 1, 2, 3, 4, 5, 6, 7, 8]); // levels 1-9
+        assert_eq!(MARK_PICKER_LAYOUT[4][..2], [36, 37]); // Start, P2
         // picking from the real pop-up marks the tile
         let mut v = view();
         v.m.started = true;

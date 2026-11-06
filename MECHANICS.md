@@ -748,9 +748,10 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   unless PersonalPrefMarkersEnabled is on, because the person uses the Start marker.
 
 ## Marking pop-up rows (changed on request)
-The pop-up now has fixed rows (`input::MARK_PICKER_LAYOUT`, tested): don't care, none, arrow, bomb, key, meat, candle,
-shield, ring; levels 1-9; any roads 1-4, wood sword, white sword, magical sword caves, Armos, the letter; unknown,
-large, medium, small secret, door repair, money making game; Take Any, potion shop, hint shop, Start, P2. The book
+The pop-up now has fixed rows (`input::MARK_PICKER_LAYOUT`, tested; rearranged on a second request): don't care,
+none, arrow, bomb, key, meat, candle, shield, ring; unknown, large, medium, small secret, door repair, money making
+game, Take Any, potion shop, hint shop; levels 1-9; any roads 1-4, wood sword, white sword, magical sword caves,
+Armos, the letter; Start, P2. The book
 shop (mark 18) is no longer offered (saves that have one still load and show it). With this fixed layout "Shops
 first" no longer changes the pop-up; it still sets the order the mouse wheel steps through marks.
 

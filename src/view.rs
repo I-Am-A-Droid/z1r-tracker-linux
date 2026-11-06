@@ -235,6 +235,12 @@ pub const CIRCLE_LINE: f32 = 3.0;
 pub const CIRCLE_LABEL_SIZE: f32 = 12.0;
 /// "Don't care" tiles: a black overlay at opacity 0.55 (WPFUI::drawDarkening@404), so the map keeps 45% of its brightness.
 pub const DONT_CARE_OPACITY: f32 = 0.55;
+
+/// Whether a map screen is shown darkened: "don't care" screens and screens that never hold anything (as in the
+/// original), and, on request, every screen with any mark on it, by the same amount.
+pub fn tile_is_shaded(mark: i32, always_empty: bool) -> bool {
+    mark >= 0 || always_empty
+}
 const PANEL: Color32 = Color32::from_rgb(20, 20, 28);
 
 impl View {
@@ -622,11 +628,7 @@ impl View {
                 let x = self.data_x(col);
                 let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
                 let mark = self.m.mark[x][y];
-                let shade = if mark == DARK_X || (mark == -1 && self.m.always_empty(x, y)) {
-                    1.0 - DONT_CARE_OPACITY
-                } else {
-                    1.0
-                };
+                let shade = if tile_is_shaded(mark, self.m.always_empty(x, y)) { 1.0 - DONT_CARE_OPACITY } else { 1.0 };
                 // the blank map shows the person's own overworld picture, if one is chosen (the original's
                 // overworldMapBMPs uses alternativeOverworldMapFilename only for quest 4)
                 let drawn = if self.m.quest == 4 {
@@ -643,7 +645,6 @@ impl View {
                 if mark >= 0 && mark != DARK_X {
                     self.draw_mark(p, r, mark, self.m.extra[x][y]);
                 }
-                // "don't care" screens are just shown darkened
                 // circle value: last two digits 0 = no circle, 1 = plain circle, else the label's character; hundreds = colour
                 let circle = self.m.circle[x][y];
                 if circle % 100 != 0 {

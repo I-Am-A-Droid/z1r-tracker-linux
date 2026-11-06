@@ -428,3 +428,8 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   "Overworld picture for the blank map..."). The picture is stretched to 768 x 264 and each 48 x 33 part is one screen
   (`Assets::use_custom_map`); the path is saved and loaded with `AlternativeOverworldMapFilename`, so saves from the
   original that use one show it too. Without a picture the blank map stays plain, as before.
+
+## Marked screens darkened (changed on request)
+A map screen with any mark on it is now drawn darkened by the same amount as a "don't care" screen (shown at
+1 − 0.55 brightness, `view::tile_is_shaded`); the marker itself is drawn on top at full brightness. The original
+darkens only "don't care" screens and screens that never hold anything; those stay darkened too.

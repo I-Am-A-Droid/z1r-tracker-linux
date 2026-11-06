@@ -1024,6 +1024,17 @@ mod tests {
     }
 
     #[test]
+    fn marked_screens_are_darkened_like_dont_care() {
+        use crate::data::DARK_X;
+        use crate::view::tile_is_shaded;
+        assert!(!tile_is_shaded(-1, false)); // unmarked
+        assert!(tile_is_shaded(-1, true)); // never holds anything
+        assert!(tile_is_shaded(DARK_X, false)); // don't care
+        assert!(tile_is_shaded(0, false)); // level 1
+        assert!(tile_is_shaded(23, false)); // a shop
+    }
+
+    #[test]
     fn timer_reads_like_the_original() {
         assert_eq!(crate::view::timer_text(0), " 0:00:00");
         assert_eq!(crate::view::timer_text(3725), " 1:02:05");

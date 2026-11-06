@@ -909,11 +909,12 @@ mod tests {
 
     #[test]
     fn reads_the_originals_own_save_files() {
-        let path = "/home/jason/Downloads/ZTracker_v2.1.0.2/zt-save-zz-autosave.json";
+        // a manual save made by the original (its autosave keeps changing while the original runs)
+        let path = "/home/jason/Downloads/ZTracker_v2.1.0.2/zt-save-manual-2026-11-04-18-08-46.json";
         let Ok(text) = std::fs::read_to_string(path) else { return };
         let mut t = Tracker::new();
         t.load_json(&text).unwrap();
-        assert_eq!(t.seconds, 120);
+        assert_eq!(t.seconds, 125);
         assert_eq!(t.uses_of_mark(DARK_X), 55);
         // a fresh first-quest tracker starts the same way
         assert_eq!(Tracker::new().mark, t.mark);

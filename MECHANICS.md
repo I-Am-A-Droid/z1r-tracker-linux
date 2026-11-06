@@ -509,3 +509,8 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   0.15 when `GiveDungeonTrackerSunglasses` is on, else 0 (and again whenever the option changes).
 - Applied: the option "Dungeon 'sunglasses'" (same setting name; the person's settings file has it on) lays black at
   0.15 over the room map, 3 px past it on every side (`SUNGLASSES_OPACITY`, `SUNGLASSES_MARGIN` in src/view.rs).
+
+## "Start" marker (changed on request)
+The first personal marker (mark 36, saved as the original's `PersonalPref1`) now says "Start" on the map and in the
+marking pop-up instead of "P1" (`data::START_MARK_TEXT`); words longer than three letters use a 10-pt font so they
+fit the 32 x 22 badge. Saves are unchanged, so the original still reads it as its Personal Preference 1 marker.

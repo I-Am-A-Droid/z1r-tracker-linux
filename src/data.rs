@@ -117,9 +117,13 @@ pub const TILES: [Tile; 38] = [
     t("TakeAny", "Take Any", "Take Any One\nYou Want", 4, 4),
     t("PotionShop", "Potion Shop", "Potion Shop\n(20-60, 48-88 rupees)", 7, 9),
     t("DarkX", "Don't Care", "Don't Care", 999, 999),
-    t("PersonalPref1", "Personal Pref 1", "Personal Preference 1\n(custom marker)", 999, 999),
+    // the first personal marker shows "Start" (asked for); its save name stays the original's
+    t("PersonalPref1", "Start", "Start\n(personal marker 1)", 999, 999),
     t("PersonalPref2", "Personal Pref 2", "Personal Preference 2\n(custom marker)", 999, 999),
 ];
+
+/// What the first personal marker (mark 36, "PersonalPref1") says on the map and in the marking pop-up.
+pub const START_MARK_TEXT: &str = "Start";
 
 /// Which picture in the overworld icon strip (16x11 pictures) shows each mark; -1 = drawn by the tracker.
 pub const TILE_STRIP_INDEX: [i32; 38] = [

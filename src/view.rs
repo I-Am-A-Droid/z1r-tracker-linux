@@ -769,11 +769,13 @@ impl View {
                 32 => "??".into(),
                 33 => "TA".into(),
                 34 => "PO".into(),
-                36 => "P1".into(),
+                36 => START_MARK_TEXT.into(),
                 37 => "P2".into(),
                 _ => String::new(),
             };
-            self.text_c(p, r, 12.0, Color32::BLACK, &s);
+            // longer words get a smaller font so they fit the 32 x 22 badge
+            let size = if s.chars().count() > 3 { 10.0 } else { 12.0 };
+            self.text_c(p, r, size, Color32::BLACK, &s);
         }
         // a shop can show a second item, in the tile's bottom-right corner
         let shop = (SHOP_FIRST..=SHOP_LAST).contains(&mark);

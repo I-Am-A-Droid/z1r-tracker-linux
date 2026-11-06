@@ -513,7 +513,7 @@ impl View {
             let (used, max) = (self.m.uses_of_mark(m), self.m.max_uses(m));
             let label = if max < 999 { format!("{}  ({used}/{max} used)", t.name) } else { t.name.to_string() };
             let text = match m {
-                36 => "P1",
+                36 => START_MARK_TEXT,
                 37 => "P2",
                 _ => t.name,
             };

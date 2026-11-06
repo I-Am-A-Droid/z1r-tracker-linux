@@ -185,6 +185,7 @@ impl View {
             Target::Button(name) => match name {
                 "Options" => self.open_options(),
                 "Hints" => self.open_hints(),
+                "RecorderSettings" => self.open_recorder_settings(p),
                 _ => self.commands.push(name),
             },
             Target::Tab(i) => self.m.tab = i,
@@ -316,6 +317,17 @@ impl View {
                 }
             }
             Action::Options => self.choose_option(i),
+            Action::RecorderSettings => {
+                if i == 0 {
+                    self.m.recorder_to_new = !self.m.recorder_to_new;
+                } else if i == 1 {
+                    self.m.recorder_to_unbeaten = !self.m.recorder_to_unbeaten;
+                }
+                let c = self.recorder_choices();
+                if let Some(p) = &mut self.popup {
+                    p.choices = c;
+                }
+            }
             Action::HideTiles => {
                 if let Some((k, _)) = HIDE_TILE_OPTIONS.get(i) {
                     let v = !self.settings.get(k);
@@ -913,6 +925,23 @@ impl View {
                 }
             })
             .collect()
+    }
+
+    /// The original's "Recorder settings" (the "..." beside "Recorder Destination" in the map legend,
+    /// UIComponents::MakeLegend@283-5): two check boxes with their explanations.
+    fn recorder_choices(&self) -> Vec<Choice> {
+        let check = |b: bool| if b { "[x] " } else { "[  ] " };
+        vec![
+            Choice::new(Icon::None, format!("{}Recorder to new dungeons", check(self.m.recorder_to_new)), "If unchecked, the recorder goes to vanilla first quest dungeon locations"),
+            Choice::new(Icon::None, format!("{}Recorder to unbeaten dungeons", check(self.m.recorder_to_unbeaten)), "If checked, the recorder goes to dungeons where you do NOT yet have the triforce"),
+        ]
+    }
+
+    pub fn open_recorder_settings(&mut self, p: Pos2) {
+        let mut pop = Popup::new("Recorder settings", 1, 520.0, 26.0, Pos2::new(p.x, (p.y - 120.0).max(20.0)), Action::RecorderSettings);
+        pop.keep_open = true;
+        pop.choices = self.recorder_choices();
+        self.popup = Some(pop);
     }
 
     pub fn open_starting_items(&mut self, p: Pos2) {

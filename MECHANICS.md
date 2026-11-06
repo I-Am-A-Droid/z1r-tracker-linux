@@ -576,3 +576,22 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   progress flag (PlayerHasMagicalSword in PlayerProgressAndTakeAnyHearts), which does count and survive a reload.
 - Max hearts (same function): 3 + heart containers had + Take Any hearts taken (state 1) + MaxHeartsDifferential —
   the rebuild's `Tracker::max_hearts` is the same formula.
+
+## The legend's "..." button: Recorder settings and destinations (asked for)
+The person pointed again at 2.1.0's "..." icon. Besides the Starting Items icon (done before), 2.1.0 has one text
+"..." button, in the map legend beside "Recorder Destination" (`UIComponents::MakeLegend`, IL listing line 82570).
+It opens "Recorder settings" (`UIComponents/MakeLegend@283-5::Invoke`, token 0x060010b2, RVA 0x42298) with two
+check boxes and their explanations: "Recorder to new dungeons" ("If unchecked, the recorder goes to vanilla first
+quest dungeon locations") and "Recorder to unbeaten dungeons" ("If checked, the recorder goes to dungeons where you
+do NOT yet have the triforce"). Saved as `RecorderToNewDungeons` (default true) / `RecorderToUnbeatenDungeons`
+(default false), which the rebuild already kept in saves but never showed.
+- Destinations (source TrackerModel.fs `recorderDests`): only with the recorder; for each triforce t whose "have"
+  is not equal to RecorderToUnbeatenDungeons: with RecorderToNewDungeons, dungeon t's marked screen (if found); else
+  the vanilla first-quest location (OverworldData.vanilla1QDungeonLocations: (7,3) (12,3) (4,7) (5,4) (11,0) (2,2)
+  (2,4) (13,6)).
+- Drawing (WPFUI.fs RoutingInfo / recorderingCanvas; UIComponents.fs RecorderEllipseColor): a 35 x 35 square turned
+  45 degrees, 3-px edge, centred on the screen, over a blurred black copy; rgb(220,220,220) with new dungeons, white
+  with vanilla spots, which are also numbered (white on black, bold 12, bottom-left).
+- Applied: `Tracker::recorder_destinations`, `View::draw_recorder_destinations`; the legend is now one tighter row
+  ending with the diamond, "Recorder" and a "..." button that opens "Recorder settings" (the explanations show as
+  each choice's description).

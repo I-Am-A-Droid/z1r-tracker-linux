@@ -126,6 +126,7 @@ pub enum Action {
     HideTiles,
     Hints,
     Starting,
+    RecorderSettings,
     LoadList(Vec<PathBuf>),
     TakeAny(usize, usize),
     TakeThis(usize, usize),
@@ -236,6 +237,14 @@ pub const CIRCLE_LINE: f32 = 3.0;
 pub const CIRCLE_LABEL_SIZE: f32 = 12.0;
 /// "Don't care" tiles: a black overlay at opacity 0.55 (WPFUI::drawDarkening@404), so the map keeps 45% of its brightness.
 pub const DONT_CARE_OPACITY: f32 = 0.55;
+/// The recorder destination diamond: a square this wide, turned 45 degrees (WPFUI.fs recorderingCanvas).
+pub const RECORDER_DIAMOND: f32 = 35.0;
+/// Its colour: rgb(220,220,220) for "Recorder to new dungeons", white for the vanilla locations
+/// (UIComponents.fs RecorderEllipseColor).
+pub fn recorder_color(to_new_dungeons: bool) -> Color32 {
+    if to_new_dungeons { Color32::from_rgb(220, 220, 220) } else { Color32::WHITE }
+}
+
 /// The "Dungeon 'sunglasses'" option: how dark, and how far past the room map it reaches.
 pub const SUNGLASSES_OPACITY: f32 = 0.15;
 pub const SUNGLASSES_MARGIN: f32 = 3.0;
@@ -364,6 +373,7 @@ impl View {
         self.draw_item_grid(&p);
         self.draw_timer_area(&p);
         self.draw_overworld(&p);
+        self.draw_recorder_destinations(&p);
         self.draw_legend(&p);
         self.draw_item_progress(&p);
         self.shift = self.lower_shift();
@@ -815,16 +825,26 @@ impl View {
 
     // ------------------------------------------------------------------ legend and item progress
     fn draw_legend(&mut self, p: &Painter) {
+        // one row, ending with the recorder destination and the original's "..." settings button beside it
         let legend: [(i32, &str); 7] = [(2, "Dungeon"), (11, "Any Road"), (21, "Sword Cave"), (31, "Shop"), (35, "Secret"), (22, "Hint/Other"), (38, "Don't care")];
+        let (icon_w, icon_h, size) = (22.0, 15.0, 9.0);
         let mut x = 2.0;
         for (strip, label) in legend {
-            let dst = rect(x, LEGEND_Y + 5.0, 32.0, 22.0);
+            let dst = rect(x, LEGEND_Y + 7.0, icon_w, icon_h);
             if !self.assets.draw(p, "s_icon_overworld_strip39.png", strip as f32 * 16.0, 0.0, 16.0, 11.0, self.r(dst), 1.0, false) {
                 self.fill(p, dst, Color32::GRAY);
             }
-            self.text(p, x + 34.0, LEGEND_Y + 9.0, 10.0, Color32::WHITE, label);
-            x += 36.0 + Self::measure(p, 10.0, label).x + 6.0;
+            self.text(p, x + icon_w + 3.0, LEGEND_Y + 9.0, size, Color32::WHITE, label);
+            x += icon_w + 3.0 + Self::measure(p, size, label).x + 7.0;
         }
+        let r = self.r(rect(x, LEGEND_Y + 7.0, icon_w, icon_h));
+        let c = r.center();
+        let col = recorder_color(self.m.recorder_to_new);
+        p.add(egui::Shape::closed_line(vec![c + Vec2::new(0.0, -7.0), c + Vec2::new(7.0, 0.0), c + Vec2::new(0.0, 7.0), c + Vec2::new(-7.0, 0.0)], Stroke::new(2.0, col)));
+        let label = "Recorder";
+        self.text(p, x + icon_w + 3.0, LEGEND_Y + 9.0, size, Color32::WHITE, label);
+        let bx = x + icon_w + 3.0 + Self::measure(p, size, label).x + 4.0;
+        self.button(p, rect(bx, LEGEND_Y + 5.0, 22.0, 19.0), "...", Target::Button("RecorderSettings"));
         self.button(p, rect(590.0, LEGEND_Y + 2.0, 96.0, 20.0), "HotKeys", Target::Button("HotKeys"));
         self.button(p, rect(590.0, LEGEND_Y + 24.0, 96.0, 20.0), "Show/Run", Target::Button("ShowRun"));
         if !self.assets.logo(p, self.r(rect(W - 63.0 - 12.0, LEGEND_Y, 60.0, 60.0))) {
@@ -1003,6 +1023,28 @@ impl View {
             self.fill(p, sq, *fill);
             self.stroke(p, sq, 2.0, *edge);
             self.text(p, x0 + 12.0, y0 - 2.0, 10.0, Color32::LIGHT_GRAY, text);
+        }
+    }
+
+    /// Where the recorder can take the player: a diamond (a 35 x 35 square turned 45 degrees, 3-px edge, over a
+    /// blurred black one) centred on each destination screen (WPFUI.fs RoutingInfo, recorderingCanvas); with the
+    /// vanilla setting each is numbered in white on black at the screen's bottom-left.
+    fn draw_recorder_destinations(&mut self, p: &Painter) {
+        let col = recorder_color(self.m.recorder_to_new);
+        for ((x, y), t) in self.m.recorder_destinations() {
+            let screen_col = if self.m.mirror { 15 - x } else { x };
+            let tile = rect(screen_col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
+            let c = self.r(tile).center();
+            let h = RECORDER_DIAMOND / std::f32::consts::SQRT_2;
+            let pts = vec![c + Vec2::new(0.0, -h), c + Vec2::new(h, 0.0), c + Vec2::new(0.0, h), c + Vec2::new(-h, 0.0)];
+            p.add(egui::Shape::closed_line(pts.clone(), Stroke::new(7.0, Color32::from_black_alpha(110))));
+            p.add(egui::Shape::closed_line(pts, Stroke::new(3.0, col)));
+            if !self.m.recorder_to_new {
+                let n = (t + 1).to_string();
+                let lr = rect(tile.min.x + 2.0, tile.max.y - 17.0, 10.0, 15.0);
+                self.fill(p, lr, Color32::BLACK);
+                self.text(p, lr.min.x + 1.0, lr.min.y, 12.0, Color32::WHITE, &n);
+            }
         }
     }
 

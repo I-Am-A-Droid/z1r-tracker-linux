@@ -486,6 +486,19 @@
       "value": 3,
       "unit": "px",
       "source": "DungeonUI/makeDungeonTabs@1936-213 (canvas +6, at -3,-3)"
+    },
+    {
+      "name": "recorder destination diamond",
+      "group": "map",
+      "value": 35,
+      "unit": "px",
+      "source": "WPFUI.fs RoutingInfo recorderingCanvas (Rectangle 35x35, rotate 45, stroke 3)"
+    },
+    {
+      "name": "recorder diamond colour (new dungeons)",
+      "group": "map",
+      "value": "rgb(220,220,220)",
+      "source": "UIComponents.fs RecorderEllipseColor"
     }
   ]
 }

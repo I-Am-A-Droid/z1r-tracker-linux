@@ -361,6 +361,7 @@ impl TrackerApp {
                 }
             }
             "OpenSaves" => open_path(&save_dir()),
+            "RecorderSettingsAtLegend" => self.view.open_recorder_settings(egui::Pos2::new(500.0, view::LEGEND_Y)),
             "HotKeys" => self.show_hotkeys = true,
             "ChooseCustomMap" => {
                 self.custom_map_text = self.view.m.alt_map_file.clone();
@@ -493,8 +494,12 @@ impl eframe::App for TrackerApp {
                 self.view.hover = view::Target::MapTile(x, y);
             }
             // Z1R_SCREENSHOT_OPEN=extras opens the Starting Items and Extra Drops panel
-            if self.frames == 5 && std::env::var("Z1R_SCREENSHOT_OPEN").is_ok_and(|v| v == "extras") {
-                self.view.open_starting_items(egui::Pos2::new(view::W / 2.0, 60.0));
+            if self.frames == 5 {
+                match std::env::var("Z1R_SCREENSHOT_OPEN").as_deref() {
+                    Ok("extras") => self.view.open_starting_items(egui::Pos2::new(view::W / 2.0, 60.0)),
+                    Ok("recorder") => self.view.commands.push("RecorderSettingsAtLegend"),
+                    _ => {}
+                }
             }
         }
         self.view.paint(ui, origin);

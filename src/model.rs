@@ -419,6 +419,34 @@ impl Tracker {
         n
     }
 
+    /// Where the recorder's whirlwind can take the player, with the dungeon index (0-7) of each (TrackerModel.fs,
+    /// `recorderDests`; in 2.1.0 TrackerModel::allUIEventingLogic): nothing without the recorder; otherwise for each
+    /// triforce t whose "have" equals "not RecorderToUnbeatenDungeons" (so normally the dungeons beaten), either that
+    /// dungeon's marked screen ("RecorderToNewDungeons", the default; skipped if not found yet) or the vanilla
+    /// first-quest location of dungeon t.
+    pub fn recorder_destinations(&self) -> Vec<((usize, usize), usize)> {
+        /// OverworldData.vanilla1QDungeonLocations (x, y), levels 1-8
+        const VANILLA_1Q: [(usize, usize); 8] = [(7, 3), (12, 3), (4, 7), (5, 4), (11, 0), (2, 2), (2, 4), (13, 6)];
+        if !self.player_has_item(8) {
+            return vec![];
+        }
+        let mut v = vec![];
+        for t in 0..8 {
+            let has = if self.hidden_dungeon_numbers { self.starting_triforces[t] || self.dungeons[t].triforce } else { self.dungeons[t].triforce };
+            if has == self.recorder_to_unbeaten {
+                continue;
+            }
+            if self.recorder_to_new {
+                if let Some(pos) = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).find(|&(x, y)| self.mark[x][y] == t as i32) {
+                    v.push((pos, t));
+                }
+            } else {
+                v.push((VANILLA_1Q[t], t));
+            }
+        }
+        v
+    }
+
     /// The original's PlayerHearts (TrackerModel::recomputePlayerStateSummary, token 0x06000306, RVA 0x9d70):
     /// 3, plus every heart container had, plus each Take Any heart taken (state 1), plus MaxHeartsDifferential
     /// (the +1 / −1 of the Starting Items and Extra Drops panel).
@@ -822,6 +850,22 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn recorder_goes_where_the_original_says() {
+        let mut t = Tracker::new();
+        t.mark[9][1] = 2; // level 3 found at J2
+        t.dungeons[2].triforce = true;
+        assert!(t.recorder_destinations().is_empty()); // no recorder yet
+        t.starting.insert("PlayerHasRecorder", true);
+        assert_eq!(t.recorder_destinations(), vec![((9, 1), 2)]); // beaten dungeons, where they were found
+        t.recorder_to_new = false;
+        assert_eq!(t.recorder_destinations(), vec![((4, 7), 2)]); // vanilla location of level 3
+        t.recorder_to_unbeaten = true;
+        assert_eq!(t.recorder_destinations().len(), 7); // the other seven, at their vanilla spots
+        t.recorder_to_new = true;
+        assert!(t.recorder_destinations().is_empty()); // unbeaten ones not found yet
     }
 
     #[test]

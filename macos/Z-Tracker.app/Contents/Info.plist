@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Describes Z-Tracker.app to macOS. make-dmg.sh fills in 2.1.0. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Z-Tracker</string>
+	<key>CFBundleDisplayName</key>
+	<string>Z-Tracker</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.i-am-a-droid.z1r-tracker</string>
+	<key>CFBundleExecutable</key>
+	<string>z1r-tracker</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>2.1.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.13</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.games</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Independent rebuild of Z-Tracker by Dr. Brian Lorgon111, with updates by Neononane.</string>
+</dict>
+</plist>

@@ -60,6 +60,13 @@ impl Assets {
     /// `shade` < 1 darkens; `mirror` flips left-right.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(&mut self, painter: &egui::Painter, sheet: &str, sx: f32, sy: f32, sw: f32, sh: f32, dst: Rect, shade: f32, mirror: bool) -> bool {
+        let v = (shade.clamp(0.0, 1.0) * 255.0) as u8;
+        self.draw_tinted(painter, sheet, sx, sy, sw, sh, dst, Color32::from_rgb(v, v, v), mirror)
+    }
+
+    /// Like `draw`, with any tint (e.g. see-through).
+    #[allow(clippy::too_many_arguments)]
+    fn draw_tinted(&mut self, painter: &egui::Painter, sheet: &str, sx: f32, sy: f32, sw: f32, sh: f32, dst: Rect, tint: Color32, mirror: bool) -> bool {
         let Some((id, size)) = self.texture(painter.ctx(), sheet) else { return false };
         let (w, h) = (size[0], size[1]);
         if sx < 0.0 || sy < 0.0 || sx + sw > w + 0.01 || sy + sh > h + 0.01 {
@@ -70,8 +77,7 @@ impl Assets {
             std::mem::swap(&mut u0, &mut u1);
         }
         let uv = Rect::from_min_max(Pos2::new(u0, sy / h), Pos2::new(u1, (sy + sh) / h));
-        let v = (shade.clamp(0.0, 1.0) * 255.0) as u8;
-        painter.image(id, dst, uv, Color32::from_rgb(v, v, v));
+        painter.image(id, dst, uv, tint);
         true
     }
 

@@ -431,5 +431,21 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
 
 ## Marked screens darkened (changed on request)
 A map screen with any mark on it is now drawn darkened by the same amount as a "don't care" screen (shown at
-1 − 0.55 brightness, `view::tile_is_shaded`); the marker itself is drawn on top at full brightness. The original
-darkens only "don't care" screens and screens that never hold anything; those stay darkened too.
+1 − 0.55 brightness, `view::tile_is_shaded`); the marker itself is drawn on top at full brightness. (This turned out
+to be the original's own rule too, see the next section.)
+
+## How the original darkens map screens (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "dontcare": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the .NET IL.
+- `WPFUI::redrawGridSpot@588` (IL listing) clears the screen, draws the map picture, and asks
+  `OverworldMapTileCustomization::GetIconBMPAndExtraDecorations` for the mark's picture; with no mark nothing more is
+  drawn. Otherwise it calls `WPFUI::redrawGridSpot$cont@602` (token 0x060003b8, RVA 0xe074):
+  - mark 35 ("don't care", or the "show as don't care" flag): unless its extra data is also 35 (then a blank tile),
+    the full-size X tile picture (`theFullTileBmpTable[35]`) is laid over the screen at opacity 0.55;
+  - any other mark: `WPFUI::drawDarkening@404` (token 0x060003b2, RVA 0xdc0c; black 48 x 33 box, 3-px black edge,
+    opacity 0.55) and then the marker picture on top at opacity 1.
+- So in the original a marked screen is darkened exactly as much as a "don't care" one; my earlier note that it
+  darkens only "don't care" screens was wrong.
+- Applied: marked screens keep the darkening; "don't care" screens keep the same darkening (so both look equally
+  dark, as asked) and now also show a faint X across the screen, standing in for the original's X tile picture
+  (`view::dont_care_overlay`).

@@ -40,7 +40,8 @@ impl Box_ {
     fn new(ident: &str) -> Self {
         Box_ { cell: -1, has: Has::No, ident: ident.to_string() }
     }
-    /// An item is chosen and it's either had or skipped (TrackerModel/Box::IsDone).
+    /// An item is chosen and it's either had or skipped (TrackerModel/Box::IsDone, token 0x060004f6, RVA 0xec48:
+    /// cell.state <> -1 and playerHas <> NO).
     pub fn is_done(&self) -> bool {
         self.cell != -1 && self.has != Has::No
     }
@@ -882,6 +883,20 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn a_box_is_done_like_the_originals() {
+        let mut b = Box_::new("LadderBox");
+        assert!(!b.is_done()); // nothing chosen
+        b.has = Has::Yes;
+        assert!(!b.is_done()); // had, but no item chosen
+        b.cell = 12;
+        assert!(b.is_done());
+        b.has = Has::Skipped;
+        assert!(b.is_done());
+        b.has = Has::No;
+        assert!(!b.is_done());
     }
 
     #[test]

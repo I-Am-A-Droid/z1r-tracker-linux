@@ -648,3 +648,12 @@ The original removes the coast item box from F16 once its item is chosen and had
 ladderBox.IsDone). On request it now stays, showing the chosen item with its green (had) or purple (skipped) border;
 clicking it still changes the item, and the right-click / wheel still cycle had / skipped. The coast reminder still
 stops once the box is done.
+
+## The coast box in the original (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "ladderBox": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `WPFUI/makeAll@523-74::Invoke` (token 0x060004b2, RVA 0x11574): if ladderBox.IsDone the coast box on F16 gets
+  opacity 0 and stops taking clicks, else opacity 1 and clickable. `TrackerModel/Box::IsDone` (token 0x060004f6,
+  RVA 0xec48): the box's cell is not −1 and playerHas is not NO.
+- The rebuild's `Box_::is_done` is the same rule (now tested). The coast box itself stays visible on request (see
+  "Coast item box stays on F16"); `is_done` still ends the coast reminder, as in the original.

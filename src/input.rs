@@ -14,7 +14,53 @@ enum Btn {
     Middle,
 }
 
-const STARTING_ICONS: [i32; 14] = [17, 10, 1, 6, 7, 0, 2, 12, 16, 4, 3, 5, 9, 8];
+/// One cell of the "Starting Items and Extra Drops" panel (the original's "..." button,
+/// OverworldItemGridUI.makeExtrasPanelAndepRefresh in the Z-Tracker source).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ExtraCell {
+    /// a dungeon's triforce (the starting piece when dungeon numbers are hidden)
+    Triforce(usize),
+    /// a starting item / extra drop (StartingItemsAndExtras in saves): key, name, icons7x7 picture
+    Start(&'static str, &'static str, i32),
+    /// an item kept with the player's progress (PlayerProgressAndTakeAnyHearts): key, name, picture
+    Prog(&'static str, &'static str, i32),
+    HeartsInfo,
+    HeartsUp,
+    HeartsDown,
+    Blank,
+}
+
+/// The panel's columns and rows, as in the original: triforces; weapons; utility items; max hearts.
+pub const EXTRAS_COLS: usize = 11;
+pub fn extras_cells() -> Vec<ExtraCell> {
+    use ExtraCell::*;
+    let mut v: Vec<ExtraCell> = (0..8).map(Triforce).collect();
+    v.extend([Blank; 3]);
+    v.extend([
+        Prog("PlayerHasWoodSword", "Wood sword", 19),
+        Start("PlayerHasWhiteSword", "White sword", 17),
+        Prog("PlayerHasMagicalSword", "Magical sword", 20),
+        Prog("PlayerHasWoodArrow", "Wood arrow", 11),
+        Start("PlayerHasSilverArrow", "Silver arrow", 10),
+        Start("PlayerHasBow", "Bow", 1),
+        Start("PlayerHasWand", "Wand", 6),
+        Prog("PlayerHasBlueCandle", "Blue candle", 21),
+        Start("PlayerHasRedCandle", "Red candle", 7),
+        Start("PlayerHasBoomerang", "Boomerang", 0),
+        Start("PlayerHasMagicBoomerang", "Magic boomerang", 2),
+        Prog("PlayerHasBlueRing", "Blue ring", 22),
+        Start("PlayerHasRedRing", "Red ring", 12),
+        Start("PlayerHasPowerBracelet", "Power bracelet", 16),
+        Start("PlayerHasLadder", "Ladder", 4),
+        Start("PlayerHasRaft", "Raft", 3),
+        Start("PlayerHasRecorder", "Recorder", 5),
+        Start("PlayerHasAnyKey", "Magic key", 9),
+        Start("PlayerHasBook", "Book", 8),
+    ]);
+    v.extend([Blank; 3]);
+    v.extend([HeartsInfo, HeartsUp, HeartsDown]);
+    v
+}
 
 impl View {
     /// Handles this frame's mouse and keyboard events (the notes box gets its own).
@@ -297,13 +343,20 @@ impl View {
                 }
             }
             Action::Starting => {
-                if i < STARTING_KEYS.len() {
-                    let k = STARTING_KEYS[i];
-                    let v = !self.m.starting[k];
-                    self.m.starting.insert(k, v);
-                } else {
-                    let t = &mut self.m.starting_triforces[i - STARTING_KEYS.len()];
-                    *t = !*t;
+                match extras_cells().get(i).copied().unwrap_or(ExtraCell::Blank) {
+                    ExtraCell::Triforce(d) if self.m.hidden_dungeon_numbers => self.m.starting_triforces[d] = !self.m.starting_triforces[d],
+                    ExtraCell::Triforce(d) => self.m.dungeons[d].triforce = !self.m.dungeons[d].triforce,
+                    ExtraCell::Start(k, _, _) => {
+                        let v = !self.m.starting.get(k).copied().unwrap_or(false);
+                        self.m.starting.insert(k, v);
+                    }
+                    ExtraCell::Prog(k, _, _) => {
+                        let v = !self.m.prog(k);
+                        self.m.set_prog(k, v);
+                    }
+                    ExtraCell::HeartsUp => self.m.max_hearts_diff += 1,
+                    ExtraCell::HeartsDown => self.m.max_hearts_diff -= 1,
+                    ExtraCell::HeartsInfo | ExtraCell::Blank => {}
                 }
                 let c = self.starting_choices();
                 if let Some(p) = &mut self.popup {
@@ -823,23 +876,48 @@ impl View {
         self.popup = Some(pop);
     }
 
-    fn starting_choices(&self) -> Vec<Choice> {
-        let mut v = vec![];
-        for (i, k) in STARTING_KEYS.iter().enumerate() {
-            let on = self.m.starting[k];
-            let label = k.replace("PlayerHas", "Start with ");
-            v.push(Choice::new(Icon::Item7(STARTING_ICONS[i], if on { 1.0 } else { 0.3 }), &k[9..11], label).sel(on));
+    /// Whether a panel cell is on.
+    fn extra_on(&self, cell: ExtraCell) -> bool {
+        match cell {
+            ExtraCell::Triforce(i) if self.m.hidden_dungeon_numbers => self.m.starting_triforces[i],
+            ExtraCell::Triforce(i) => self.m.dungeons[i].triforce,
+            ExtraCell::Start(k, _, _) => self.m.starting.get(k).copied().unwrap_or(false),
+            ExtraCell::Prog(k, _, _) => self.m.prog(k),
+            _ => false,
         }
-        for i in 0..8 {
-            let on = self.m.starting_triforces[i];
-            v.push(Choice::new(Icon::Icon10(if on { 1 } else { 0 }, 1.0), format!("T{}", i + 1), format!("Start with triforce {}", i + 1)).sel(on));
-        }
-        v
     }
 
-    fn open_starting_items(&mut self, p: Pos2) {
-        let title = "Starting items and extra drops (click to toggle)";
-        let mut pop = Popup::new(title, 8, 44.0, 40.0, Pos2::new(p.x, p.y + 20.0), Action::Starting);
+    fn starting_choices(&self) -> Vec<Choice> {
+        let pale = Color32::from_rgb(16, 16, 24);
+        extras_cells()
+            .into_iter()
+            .map(|cell| {
+                let on = self.extra_on(cell);
+                let shade = if on { 1.0 } else { 0.3 };
+                match cell {
+                    ExtraCell::Triforce(i) => Choice::new(Icon::Icon10(if on { 1 } else { 0 }, 1.0), format!("T{}", i + 1), format!("Triforce {} (click to toggle)", i + 1)).sel(on),
+                    ExtraCell::Start(_, name, icon) => Choice::new(Icon::Item7(icon, shade), &name[..2], format!("{name}: started with it, or an extra drop")).sel(on),
+                    ExtraCell::Prog(_, name, icon) => Choice::new(Icon::Item7(icon, shade), &name[..2], format!("{name}: have it")).sel(on),
+                    ExtraCell::HeartsInfo => {
+                        let mut c = Choice::new(Icon::None, format!("{} hearts", self.m.max_hearts()), format!("Max Hearts: {}", self.m.max_hearts()));
+                        c.fill = Some(pale);
+                        c
+                    }
+                    ExtraCell::HeartsUp => Choice::new(Icon::None, "+1", "Max hearts +1 (adjust)"),
+                    ExtraCell::HeartsDown => Choice::new(Icon::None, "-1", "Max hearts -1 (adjust)"),
+                    ExtraCell::Blank => {
+                        let mut c = Choice::new(Icon::None, "", "Mark items you start the game with, or get as monster drops / extra dungeon drops").en(false);
+                        c.fill = Some(pale);
+                        c
+                    }
+                }
+            })
+            .collect()
+    }
+
+    pub fn open_starting_items(&mut self, p: Pos2) {
+        let title = "Starting Items and Extra Drops";
+        let mut pop = Popup::new(title, EXTRAS_COLS, 44.0, 40.0, Pos2::new(p.x, p.y + 20.0), Action::Starting);
         pop.keep_open = true;
         pop.choices = self.starting_choices();
         self.popup = Some(pop);
@@ -1048,6 +1126,30 @@ mod tests {
         v.m.ladder_box.cell = 7;
         v.m.ladder_box.has = Has::Yes;
         assert_eq!(v.coast_reminder_text(), None, "coast item taken");
+    }
+
+    #[test]
+    fn extras_panel_follows_the_original() {
+        let mut v = view();
+        let cells = extras_cells();
+        assert_eq!(cells.len(), EXTRAS_COLS * 3 + 3); // three full rows, then max hearts
+        let at = |c: ExtraCell| cells.iter().position(|&x| x == c).unwrap();
+        // triforces toggle the dungeon's own triforce
+        v.choose(Action::Starting, at(ExtraCell::Triforce(2)), false);
+        assert!(v.m.dungeons[2].triforce);
+        // starting items and progress items
+        let ladder = cells.iter().position(|c| matches!(c, ExtraCell::Start("PlayerHasLadder", _, _))).unwrap();
+        v.choose(Action::Starting, ladder, false);
+        assert!(v.m.starting["PlayerHasLadder"]);
+        let wood = cells.iter().position(|c| matches!(c, ExtraCell::Prog("PlayerHasWoodSword", _, _))).unwrap();
+        v.choose(Action::Starting, wood, false);
+        assert!(v.m.prog("PlayerHasWoodSword"));
+        // max hearts
+        let before = v.m.max_hearts();
+        v.choose(Action::Starting, at(ExtraCell::HeartsUp), false);
+        v.choose(Action::Starting, at(ExtraCell::HeartsUp), false);
+        v.choose(Action::Starting, at(ExtraCell::HeartsDown), false);
+        assert_eq!(v.m.max_hearts(), before + 1);
     }
 
     #[test]

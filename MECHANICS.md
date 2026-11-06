@@ -539,3 +539,22 @@ The person asked for a magnifier using the enlarged screens from Z-Tracker 1.2.3
   over the dungeon rooms (keeping its 16:11 shape), labelled with its coordinates, with the key underneath
   (`View::draw_magnifier`). It follows "mirror the overworld"; with the blank map it enlarges the person's own map
   picture. Like the map pictures, these are first-quest screens and are used for every overworld choice.
+
+## The "..." button: Starting Items and Extra Drops (asked for)
+The person pointed at the "..." icon of Z-Tracker 1.2.3. In the original (source beside 1.2.3:
+Z1R_WPF/MainTrackerTriforcesAndItems.fs, `Graphics.iconExtras_bmp` = picture 7 of icons10x10, tooltip "Starting items
+and extra drops") it opens the panel built by OverworldItemGridUI.fs `makeExtrasPanelAndepRefresh`:
+- header "Starting Items and Extra Drops", "Mark any items you start the game with or get as monster drops/extra
+  dungeon drops in this section";
+- the 8 triforces: clicking toggles the dungeon's own triforce (`TrackerModel.GetDungeon(i).ToggleTriforce`), or the
+  starting piece (`HDNStartingTriforcePieces`) when dungeon numbers are hidden;
+- weapons row: Wood sword, White sword, Magical sword, Wood arrow, Silver arrow, Bow, Wand, Blue candle, Red candle,
+  Boomerang, Magic boomerang; utility row: Blue ring, Red ring, Power bracelet, Ladder, Raft, Recorder, Magic key,
+  Book. Wood sword, wood arrow, blue candle, blue ring (and, in 2.1.0's saves, magical sword) are progress items
+  (`PlayerProgressAndTakeAnyHearts`); the rest are `StartingItemsAndExtras`;
+- "Max Hearts: N" with +1 / −1 buttons changing `MaxHeartsDifferential`;
+- a picture reference of vanilla dungeon items and the hidden-dungeon triforce decoder (not rebuilt: they need the
+  original's pictures).
+Applied: the "..." button now opens that panel in the same rows (`input::extras_cells`, 11 columns): triforces,
+weapons, utility items, then the hearts count with +1 / −1. Before, it listed only the 14 starting items and 8
+starting triforce pieces.

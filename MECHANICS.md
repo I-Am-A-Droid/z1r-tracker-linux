@@ -495,3 +495,17 @@ strings, and 2.1.0's resource and translation files):
 - Also in that source (`BmpPair`): Ganon and Zelda rooms use their "done" picture in both states; the old-man hint
   room uses its "done" picture unless "BookForHelpfulHints" — matching the pictures the rebuild already draws.
 Everything else in 1.2.3 is already in 2.1.0 and so in this rebuild.
+
+## Dungeon "sunglasses" and the original's Options menu (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "BookForHelpfulHints": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `<StartupCode$Z1R_WPF>.$OptionsMenu::.cctor` (token 0x06002511, RVA 0x828c4) lists the dungeon options as
+  (label, explanation, setting): "Do door inference", "Book for Helpful Hints" (left-click old-man hint rooms to mark
+  them read), "Alphabetize hint zone list", "Left-drag auto-inverts", "Default to NonDescript", "Dungeon 'sunglasses'"
+  ("The dungeon tracker has high contrast (bright colors against black); Turn this on to darken the colors somewhat
+  to reduce bright contrast"), "Reverse scroll wheel".
+- `DungeonUI::makeDungeonTabs@1936-213` adds a black rectangle, not clickable, 6 px wider and taller than the dungeon
+  canvas, at (−3, −3) on top of it; `DungeonUI::doSunglasses@1961` (token 0x06001be4, RVA 0x6183c) sets its opacity to
+  0.15 when `GiveDungeonTrackerSunglasses` is on, else 0 (and again whenever the option changes).
+- Applied: the option "Dungeon 'sunglasses'" (same setting name; the person's settings file has it on) lays black at
+  0.15 over the room map, 3 px past it on every side (`SUNGLASSES_OPACITY`, `SUNGLASSES_MARGIN` in src/view.rs).

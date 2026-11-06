@@ -236,6 +236,9 @@ pub const CIRCLE_LINE: f32 = 3.0;
 pub const CIRCLE_LABEL_SIZE: f32 = 12.0;
 /// "Don't care" tiles: a black overlay at opacity 0.55 (WPFUI::drawDarkening@404), so the map keeps 45% of its brightness.
 pub const DONT_CARE_OPACITY: f32 = 0.55;
+/// The "Dungeon 'sunglasses'" option: how dark, and how far past the room map it reaches.
+pub const SUNGLASSES_OPACITY: f32 = 0.15;
+pub const SUNGLASSES_MARGIN: f32 = 3.0;
 
 /// Whether a map screen is shown darkened, as in the original (`WPFUI::redrawGridSpot$cont@602`, token 0x060003b8,
 /// RVA 0xe074): a screen with a mark gets `drawDarkening` (black at opacity 0.55) under its marker, and a "don't
@@ -946,6 +949,12 @@ impl View {
                 }
                 self.hit(r, Target::Room(x, y));
             }
+        }
+        // Dungeon "sunglasses": a black box 3 px larger than the room map on every side, over it at opacity 0.15
+        // (DungeonUI::doSunglasses@1961, token 0x06001be4, RVA 0x6183c; set up in makeDungeonTabs@1936-213)
+        if self.settings.get("GiveDungeonTrackerSunglasses") {
+            let area = Self::room_rect(0, 0).union(Self::room_rect(7, 7)).expand(SUNGLASSES_MARGIN);
+            self.fill(p, area, Color32::from_black_alpha((SUNGLASSES_OPACITY * 255.0).round() as u8));
         }
     }
 

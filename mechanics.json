@@ -473,6 +473,19 @@
       "group": "map",
       "value": "Overworld\\quest.%d.ow.%2d.%2d.bmp",
       "source": "Graphics::overworldMapBMPs token 0x06002bc9 rva 0x9aecc"
+    },
+    {
+      "name": "dungeon sunglasses opacity",
+      "group": "dungeon",
+      "value": 0.15,
+      "source": "DungeonUI::doSunglasses@1961 token 0x06001be4 rva 0x6183c"
+    },
+    {
+      "name": "dungeon sunglasses margin",
+      "group": "dungeon",
+      "value": 3,
+      "unit": "px",
+      "source": "DungeonUI/makeDungeonTabs@1936-213 (canvas +6, at -3,-3)"
     }
   ]
 }

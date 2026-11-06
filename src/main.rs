@@ -113,6 +113,7 @@ fn main() {
             .with_app_id("z1r-tracker")
             .with_inner_size(start_size(scale))
             .with_min_inner_size([W * 0.4, H * 0.4]),
+        renderer: renderer(),
         ..Default::default()
     };
     let screenshot = opts.screenshot.clone();
@@ -149,6 +150,17 @@ const WINDOW_TITLE: &str = "Z-Tracker for Zelda 1 Randomizer";
 /// The original offers window sizes 4/3, default, 5/6 and 2/3 (SmallerAppWindowScaleFactor; text in Program::menu@873).
 const MIN_WINDOW_FACTOR: f64 = 2.0 / 3.0 - 0.01;
 const MAX_WINDOW_FACTOR: f64 = 4.0 / 3.0 + 0.01;
+
+/// How the window is drawn: on Windows with Direct3D/Vulkan through wgpu (works without good OpenGL drivers, e.g.
+/// in virtual machines or remote desktops), elsewhere with OpenGL. Z1R_RENDERER=glow or =wgpu overrides it.
+fn renderer() -> eframe::Renderer {
+    match std::env::var("Z1R_RENDERER").as_deref() {
+        Ok("glow") => eframe::Renderer::Glow,
+        Ok("wgpu") => eframe::Renderer::Wgpu,
+        _ if cfg!(windows) => eframe::Renderer::Wgpu,
+        _ => eframe::Renderer::Glow,
+    }
+}
 
 static EXIT_CODE: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
 

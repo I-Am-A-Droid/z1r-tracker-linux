@@ -300,3 +300,11 @@ Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_fin
 + "You should fix this error by editing the text file. Or you can delete it, and pressing the button again will create an
 empty template file in its place." The rebuild now uses the same patterns and message (it used to look for SHOW/RUN
 anywhere, in any case, and skip bad lines). Pictures open in the system's viewer, so the window position is not used.
+
+## Windows program and installer (changed on request)
+On Windows the window is drawn with wgpu (Direct3D 12 / Vulkan) instead of OpenGL, because OpenGL set-up failed under
+Wine ("failed to find a matching configuration for creating glutin config") and is unreliable in virtual machines and
+remote desktops; Linux and macOS keep OpenGL. Z1R_RENDERER=glow|wgpu overrides the choice. The Windows .exe is built on
+Linux with `cargo zigbuild --target x86_64-pc-windows-gnu`; `windows/installer.iss` makes a per-user Inno Setup installer
+(Start Menu entry, optional desktop shortcut, uninstaller). Both were tested under Wine 64-bit: the program draws the full
+tracker with the original's pictures, and the installer installs, adds shortcuts and the installed program runs.

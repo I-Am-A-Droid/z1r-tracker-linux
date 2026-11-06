@@ -49,6 +49,14 @@ jobs:
           mkdir -p dist/${{ matrix.name }}
           cp target/${{ matrix.target }}/release/${{ matrix.exe }} README.md dist/${{ matrix.name }}/
           cd dist && tar czf ${{ matrix.name }}.tar.gz ${{ matrix.name }}
+      - name: Windows installer (Inno Setup)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" | Select-Object -First 1).FullName
+          & $iscc "/DExeDir=..\target\${{ matrix.target }}\release" windows\installer.iss
+          Copy-Item dist\z1r-tracker-setup.exe dist\${{ matrix.name }}\
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
@@ -57,4 +65,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.name }}.tar.gz
+          files: |
+            dist/${{ matrix.name }}.tar.gz
+            dist/z1r-tracker-setup.exe

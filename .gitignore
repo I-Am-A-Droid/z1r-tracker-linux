@@ -9,3 +9,6 @@
 /obj/
 /src/*.cs
 /Z1RTracker.csproj
+
+# packaged programs and installers made from the build
+/dist/

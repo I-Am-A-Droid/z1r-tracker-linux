@@ -16,6 +16,15 @@ Options). Nothing in that file is run. Without it the tracker still works and dr
 
 ## Download
 
+**Windows:** run `z1r-tracker-setup.exe` to install (no administrator rights needed; it adds a Start Menu entry, an
+optional desktop shortcut and an uninstaller), or unzip `z1r-tracker-windows-x86_64.zip` and run `z1r-tracker.exe`
+from anywhere. Windows may warn that the program is from an unknown publisher, because it isn't signed:
+choose **More info** > **Run anyway**. Put it in the original Z-Tracker's folder if you want both to share settings
+and saves.
+
+To make those files yourself on Linux: `cargo zigbuild --release --target x86_64-pc-windows-gnu`
+(needs `pip install ziglang` and `cargo install cargo-zigbuild`), then compile `windows/installer.iss` with Inno Setup.
+
 Every upload to GitHub builds the program for Linux, Windows (`z1r-tracker.exe`) and macOS (Apple Silicon and Intel):
 open the latest run under the repository's **Actions** tab and download it from **Artifacts**. Tagged versions
 (e.g. `v2.1.0`) are also published under **Releases**.

@@ -627,7 +627,14 @@ impl View {
                 } else {
                     1.0
                 };
-                let drawn = self.m.quest != 4 && self.assets.map_screen(p, self.m.quest, x, y, self.r(r), shade, self.m.mirror);
+                // the blank map shows the person's own overworld picture, if one is chosen (the original's
+                // overworldMapBMPs uses alternativeOverworldMapFilename only for quest 4)
+                let drawn = if self.m.quest == 4 {
+                    self.assets.follow_custom_map(&self.m.alt_map_file);
+                    self.assets.custom_map_screen(p, x, y, self.r(r), shade, self.m.mirror)
+                } else {
+                    self.assets.map_screen(p, self.m.quest, x, y, self.r(r), shade, self.m.mirror)
+                };
                 if !drawn {
                     let v = |c: f32| (c * shade) as u8;
                     self.fill(p, r, Color32::from_rgb(v(40.0), v(90.0), v(40.0)));

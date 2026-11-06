@@ -341,6 +341,10 @@ impl View {
         } else if i == n + 4 {
             self.confirm("Discard this seed and start over?", Action::StartOver, Pos2::new(W / 2.0, 200.0));
             return;
+        } else if i == n + 5 {
+            self.popup = None;
+            self.commands.push("ChooseCustomMap");
+            return;
         }
         let c = self.options_choices();
         if let Some(p) = &mut self.popup {
@@ -720,6 +724,10 @@ impl View {
                 self.paused = false;
                 let msg = if i <= 3 { "Good luck! Left-click map tiles to mark them." } else { "Blank map ready." };
                 self.show_toast(msg, 3.0);
+                // like the original, the blank map offers to show an overworld picture of the person's own
+                if i == 4 {
+                    self.commands.push("ChooseCustomMap");
+                }
             }
             5 => self.commands.push("LoadAutosave"),
             _ => self.commands.push("Load"),
@@ -748,6 +756,7 @@ impl View {
         v.push(Choice::new(Icon::None, format!("Overworld: {q}  (click to change)"), "Change the overworld map"));
         v.push(Choice::new(Icon::None, "Open the saves folder", crate::settings::save_dir().display().to_string()));
         v.push(Choice::new(Icon::None, "Start over with a new seed", "Clears everything"));
+        v.push(Choice::new(Icon::None, "Overworld picture for the blank map...", "A .png of the whole overworld"));
         v
     }
 

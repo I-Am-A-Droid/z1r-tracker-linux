@@ -229,6 +229,8 @@ struct TrackerApp {
     frames: u32,
     shot_state: Arc<AtomicU8>, // 0 not asked, 1 asked, 2 saved, 3 failed
     show_hotkeys: bool,
+    show_custom_map: bool,
+    custom_map_text: String,
     zoom_set: bool,
     frames_seen: u64,
     /// where the window was asked to start, and how far the system actually put it from there (some X11 window
@@ -241,7 +243,7 @@ impl TrackerApp {
     fn new(view: View, screenshot: Option<PathBuf>) -> Self {
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
-            shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, zoom_set: false, frames_seen: 0,
+            shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_custom_map: false, custom_map_text: String::new(), zoom_set: false, frames_seen: 0,
             placed_at: None, place_shift: None,
         }
     }
@@ -360,6 +362,10 @@ impl TrackerApp {
             }
             "OpenSaves" => open_path(&save_dir()),
             "HotKeys" => self.show_hotkeys = true,
+            "ChooseCustomMap" => {
+                self.custom_map_text = self.view.m.alt_map_file.clone();
+                self.show_custom_map = true;
+            }
             "ShowRun" => show_run_custom(&mut self.view),
             "Zoom" => self.zoom_set = false,
             _ => {}
@@ -368,6 +374,36 @@ impl TrackerApp {
     }
 
     fn windows(&mut self, ctx: &egui::Context) {
+        let mut open = self.show_custom_map;
+        let mut close = false;
+        egui::Window::new("Overworld picture for the blank map").open(&mut open).default_width(520.0).show(ctx, |ui| {
+            ui.label("With the blank map, the tracker can show a picture of the whole overworld that you made (a .png).");
+            ui.label("It is stretched to 768 x 264, and each 48 x 33 part is one screen. Leave empty for no picture.");
+            ui.label("Full path of the picture:");
+            ui.text_edit_singleline(&mut self.custom_map_text);
+            ui.horizontal(|ui| {
+                if ui.button("Use this picture").clicked() {
+                    let path = self.custom_map_text.trim().to_string();
+                    match self.view.assets.use_custom_map(&path) {
+                        Ok(()) => {
+                            self.view.m.alt_map_file = path.clone();
+                            if self.view.m.quest != 4 && !path.is_empty() {
+                                self.view.show_toast("Picture set; it shows when the overworld is Blank (Options).", 5.0);
+                            }
+                            close = true;
+                        }
+                        Err(e) => self.view.show_toast(format!("Could not read that picture: {e}"), 6.0),
+                    }
+                }
+                if ui.button("No picture").clicked() {
+                    let _ = self.view.assets.use_custom_map("");
+                    self.view.m.alt_map_file.clear();
+                    close = true;
+                }
+            });
+        });
+        self.show_custom_map = open && !close;
+
         let mut open = self.show_hotkeys;
         egui::Window::new("HotKeys").open(&mut open).default_size([480.0, 520.0]).vscroll(true).show(ctx, |ui| {
             ui.label(format!("Hot keys are read from {}", settings::hotkeys_path().display()));

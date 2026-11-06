@@ -23,7 +23,15 @@ const SMOOTH: TextureOptions = TextureOptions {
 
 pub struct Assets {
     sheets: HashMap<String, Sheet>,
+    /// the overworld picture last asked for with the blank map ("" = none)
+    custom_map_path: String,
 }
+
+/// The person's own overworld picture for the blank map.
+const CUSTOM_MAP: &str = "custom overworld";
+/// The original makes the picture 768 x 264 and cuts it into 16 x 8 screens of 48 x 33
+/// (`Graphics::overworldMapBMPs`, token 0x06002bc9, RVA 0x9aecc).
+pub const CUSTOM_MAP_SIZE: [u32; 2] = [768, 264];
 
 impl Default for Assets {
     fn default() -> Self {
@@ -34,7 +42,7 @@ impl Default for Assets {
 impl Assets {
     pub fn new() -> Self {
         let sheets = crate::art::sheets().into_iter().map(|(name, image, scale, pixel_art)| (name.to_string(), Sheet { image, texture: None, scale, pixel_art })).collect();
-        Assets { sheets }
+        Assets { sheets, custom_map_path: String::new() }
     }
 
     /// The sheet's texture and its size in units.
@@ -105,8 +113,58 @@ impl Assets {
     pub fn logo(&mut self, p: &egui::Painter, dst: Rect) -> bool {
         self.draw(p, "ZTlogo64x64.png", 0.0, 0.0, 64.0, 64.0, dst, 1.0, false)
     }
+    /// Uses the picture at `path` as the blank map's overworld ("" = none). Like the original, any size is stretched
+    /// to 768 x 264 and each 48 x 33 part is one screen.
+    pub fn use_custom_map(&mut self, path: &str) -> Result<(), String> {
+        self.custom_map_path = path.to_string();
+        self.sheets.remove(CUSTOM_MAP);
+        if path.is_empty() {
+            return Ok(());
+        }
+        let img = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
+        let [w, h] = CUSTOM_MAP_SIZE;
+        let img = image::imageops::resize(&img, w, h, image::imageops::FilterType::Triangle);
+        let image = ColorImage::from_rgba_unmultiplied([w as usize, h as usize], img.as_raw());
+        self.sheets.insert(CUSTOM_MAP.into(), Sheet { image, texture: None, scale: 3.0, pixel_art: false });
+        Ok(())
+    }
+
+    /// Makes sure the blank map's picture is the one named in the tracker (e.g. after loading a save).
+    pub fn follow_custom_map(&mut self, path: &str) {
+        if path != self.custom_map_path {
+            if let Err(e) = self.use_custom_map(path) {
+                eprintln!("Could not read the overworld picture {path}: {e}");
+            }
+        }
+    }
+
+    /// One screen of the blank map's own picture, if one is chosen.
+    #[allow(clippy::too_many_arguments)]
+    pub fn custom_map_screen(&mut self, p: &egui::Painter, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
+        self.draw(p, CUSTOM_MAP, x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
+    }
+
     /// One overworld screen (the map is 16 x 8 screens of 16 x 11 units; all four overworlds share its ground).
     pub fn map_screen(&mut self, p: &egui::Painter, _quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
         self.draw(p, "s_map_overworld_strip8.png", x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_custom_overworld_picture_is_stretched_to_the_originals_size() {
+        let dir = std::env::temp_dir().join("z1r-custom-map-test");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("map.png");
+        image::save_buffer(&path, &vec![200u8; 100 * 50 * 4], 100, 50, image::ColorType::Rgba8).unwrap();
+        let mut a = super::Assets::new();
+        a.use_custom_map(path.to_str().unwrap()).unwrap();
+        let s = &a.sheets[super::CUSTOM_MAP];
+        assert_eq!(s.image.size, [768, 264]);
+        assert_eq!(s.image.size[0] as f32 / s.scale, 256.0); // 16 screens of 16 units
+        assert!(a.use_custom_map("/no/such/picture.png").is_err());
+        a.use_custom_map("").unwrap();
+        assert!(!a.sheets.contains_key(super::CUSTOM_MAP));
     }
 }

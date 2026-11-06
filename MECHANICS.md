@@ -409,3 +409,22 @@ The overworld map is now made from the person's map screen pictures, copied from
 `art::overworld` puts them together into the 768 x 264 map sheet at 3 pixels per unit, shown with sharp pixels when
 enlarged. All four overworld choices use these first-quest pictures; a screen without a picture would be drawn by
 the tracker's own map drawing (`art::drawn_overworld`). Nothing is read from the original's folder at run time.
+
+## How the original makes its overworld pictures (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Overworld": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `Graphics::overworldMapBMPs(quest)` (token 0x06002bc9, RVA 0x9aecc) builds the map as a 16 x 8 array of 48 x 33
+  pictures. For each screen it calls `Graphics::readCacheFileOrCreateBmp` (IL listing line 219004) with
+  BaseDirectory + `Overworld\quest.%d.ow.%2d.%2d.bmp` (quest, x, y; `%2d` pads with a space): if the file exists it
+  is read, otherwise the screen is made from the built-in map strip, its folder created, and the file saved (despite
+  the name, as PNG). So the `Overworld` folder is the original's cache of the screens it has shown; it only holds
+  the first quest when only that overworld was used.
+- For quest 4 (the blank map), when `alternativeOverworldMapFilename` is set, it instead opens that picture, makes it
+  768 x 264 (`new Bitmap(image, Size(768, 264))`) and cuts screen (x, y) from pixels x·16·3 .. +48, y·11·3 .. +33.
+- The file is chosen right after a start choice (`Program/-ctor@1318-144::Invoke`, token 0x0600031a, RVA 0xc328):
+  it is first set to "", then an open-file dialog "Overworld map images|*.png", starting in the program's folder,
+  sets it. Saves keep it as `AlternativeOverworldMapFilename` (restored by `WPFUI/makeAll@82::Invoke`).
+- Applied: choosing "Blank map" now offers the same choice (a window asking for the .png's path; also under Options:
+  "Overworld picture for the blank map..."). The picture is stretched to 768 x 264 and each 48 x 33 part is one screen
+  (`Assets::use_custom_map`); the path is saved and loaded with `AlternativeOverworldMapFilename`, so saves from the
+  original that use one show it too. Without a picture the blank map stays plain, as before.

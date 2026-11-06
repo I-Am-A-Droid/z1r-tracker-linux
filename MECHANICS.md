@@ -766,3 +766,14 @@ the 1.3.1 source.
 - Applied: the marking pop-up's description (bottom, now up to three lines, `Popup::foot_lines`) shows the name and
   uses, the shop reminder for shops, and "HotKey = ..." from HotKeys.txt (`HotKeys::overworld_key_for`,
   `input::with_hotkey`). With several keys for one mark, the first by name is shown.
+
+## Which marks may go on a screen (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Unmarked": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the 1.3.1 source (WPFUI.fs) and
+OverworldData.fs.
+- A choice in the tile pop-up is selectable when (it is the tile's current mark, or CanAddUse) and isLegalHere;
+  isLegalHere(state) = if state = ARMOS then owInstance.HasArmos(i, j) else true. HasArmos is false on the blank map,
+  otherwise the owMapSquaresArmos grid: M2, E3, E4, N4, O5 (the rebuild's `data::ARMOS` grid is the same).
+- Applied: `Tracker::legal_here` / `Tracker::can_use` (tested): the Armos mark is greyed out in the pop-up and refused
+  (with "Armos can't go here (no Armos statues on this screen)") on other screens and on the blank map. Before, it
+  could be put anywhere.

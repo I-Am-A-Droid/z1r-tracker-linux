@@ -457,8 +457,16 @@ impl Tracker {
     pub fn uses_of_mark(&self, mark: i32) -> usize {
         self.mark.iter().flat_map(|c| c.iter()).filter(|m| **m == mark).count()
     }
+    /// Whether `mark` may be put on (x, y), as the original's tile pop-up decides (WPFUI.fs: isSelectable =
+    /// (n = originalState || CanAddUse n) && isLegalHere n): uses left (or already this mark), and legal here — the
+    /// Armos mark only on a screen with Armos statues (OverworldInstance.HasArmos; never on the blank map).
     pub fn can_use(&self, mark: i32, x: usize, y: usize) -> bool {
-        mark < 0 || self.mark[x][y] == mark || self.uses_of_mark(mark) < self.max_uses(mark)
+        (mark < 0 || self.mark[x][y] == mark || self.uses_of_mark(mark) < self.max_uses(mark)) && self.legal_here(mark, x, y)
+    }
+
+    /// The original's isLegalHere: only the Armos mark is limited, to the Armos screens of the overworld.
+    pub fn legal_here(&self, mark: i32, x: usize, y: usize) -> bool {
+        mark != crate::data::ARMOS_MARK || (self.quest != 4 && at(&crate::data::ARMOS, x, y))
     }
 
     pub fn always_empty(&self, x: usize, y: usize) -> bool {

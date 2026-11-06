@@ -536,7 +536,12 @@ impl View {
 
     pub fn set_mark(&mut self, x: usize, y: usize, mark: i32) {
         if !self.m.can_use(mark, x, y) {
-            self.show_toast(format!("All {} marks are already used", TILES[mark as usize].name), 3.0);
+            let msg = if self.m.legal_here(mark, x, y) {
+                format!("All {} marks are already used", TILES[mark as usize].name)
+            } else {
+                format!("{} can't go here (no Armos statues on this screen)", TILES[mark as usize].name)
+            };
+            self.show_toast(msg, 3.0);
             return;
         }
         let before = self.m.mark[x][y];
@@ -1272,11 +1277,20 @@ mod tests {
         // picking from the real pop-up marks the tile
         let mut v = view();
         v.m.started = true;
-        v.open_mark_picker(3, 3, Pos2::ZERO);
-        let Some(Action::Mark(x, y, order)) = v.popup.as_ref().map(|p| p.action.clone()) else { panic!() };
-        let i = order.iter().position(|&m| m == 31).unwrap(); // Armos
-        v.choose(Action::Mark(x, y, order), i, false);
-        assert_eq!(v.m.mark[3][3], 31);
+        let armos_choice = |v: &mut View, x: usize, y: usize| {
+            v.open_mark_picker(x, y, Pos2::ZERO);
+            let Some(Action::Mark(x, y, order)) = v.popup.as_ref().map(|p| p.action.clone()) else { panic!() };
+            let i = order.iter().position(|&m| m == 31).unwrap(); // Armos
+            let enabled = v.popup.as_ref().unwrap().choices[i].enabled;
+            v.choose(Action::Mark(x, y, order), i, false);
+            enabled
+        };
+        // an Armos screen (M2): allowed
+        assert!(armos_choice(&mut v, 12, 1));
+        assert_eq!(v.m.mark[12][1], 31);
+        // D4 has no Armos statues: not offered and not set (the original's isLegalHere)
+        assert!(!armos_choice(&mut v, 3, 3));
+        assert_eq!(v.m.mark[3][3], -1);
     }
 
     #[test]

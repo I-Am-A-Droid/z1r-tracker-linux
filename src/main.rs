@@ -547,20 +547,24 @@ fn show_run_custom(view: &mut View) {
         }
     };
     let text = std::fs::read_to_string(&path).unwrap_or_default();
-    let mut done = 0;
-    for raw in text.lines() {
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
+    let lines = match parse_show_run(&text) {
+        Ok(l) => l,
+        Err(n) => {
+            // the original's message (ShowRunCustom::ParseShowRunCustomFile)
+            view.show_toast(
+                format!(
+                    "Error parsing '{}', line {n}. You should fix this error by editing the text file. Or you can delete it, and pressing the button again will create an empty template file in its place.",
+                    path.display()
+                ),
+                10.0,
+            );
+            return;
         }
-        let quoted = |s: &str| -> Option<(String, String)> {
-            let a = s.find('"')?;
-            let b = s[a + 1..].find('"')? + a + 1;
-            Some((s[a + 1..b].to_string(), s[b + 1..].trim().to_string()))
-        };
-        let upper = line.to_uppercase();
-        if let Some(pos) = upper.find("SHOW") {
-            if let Some((file, _)) = quoted(&line[pos..]) {
+    };
+    let mut done = 0;
+    for line in lines {
+        match line {
+            ShowRun::Show(file) => {
                 let f = resolve(&file);
                 if f.exists() {
                     open_path(&f);
@@ -569,8 +573,7 @@ fn show_run_custom(view: &mut View) {
                     view.show_toast(format!("Picture not found: {}", f.display()), 5.0);
                 }
             }
-        } else if upper.starts_with("RUN") {
-            if let Some((target, rest)) = quoted(line) {
+            ShowRun::Run(target, rest) => {
                 if target.starts_with("http://") || target.starts_with("https://") {
                     platform::open(&target);
                     done += 1;
@@ -588,11 +591,63 @@ fn show_run_custom(view: &mut View) {
     }
 }
 
-#[allow(dead_code)]
-fn _unused(_: Vec2) {}
+/// One action from ShowRunCustom.txt.
+#[derive(Debug, PartialEq)]
+enum ShowRun {
+    Show(String),
+    Run(String, String),
+}
+
+/// Reads ShowRunCustom.txt with the original's rules (ShowRunCustom::ParseShowRunCustomFile, token 0x06002649,
+/// RVA 0x87b8c): each line is blank, a "#" comment, SHOW "file", left,top,width,height SHOW "file" (the window
+/// position is the original's; here pictures open in the system's viewer), or RUN "target" arguments.
+/// Anything else is an error, reported with its line number (1-based).
+fn parse_show_run(text: &str) -> Result<Vec<ShowRun>, usize> {
+    use regex::Regex;
+    let blank = Regex::new(r"^\s*$").unwrap();
+    let comment = Regex::new(r"^#(.*)$").unwrap();
+    let show = Regex::new(r#"^\s*SHOW\s*"(.*)"\s*$"#).unwrap();
+    let show_at = Regex::new(r#"^\s*(-?\d+),(-?\d+),(\d+),(\d+)\s*SHOW\s*"(.*)"\s*$"#).unwrap();
+    let run = Regex::new(r#"^\s*RUN\s*"(.*)"\s*(.*)$"#).unwrap();
+    let mut out = vec![];
+    for (i, raw) in text.lines().enumerate() {
+        let line = raw.trim_end_matches('\r').trim_start_matches('\u{feff}');
+        if blank.is_match(line) || comment.is_match(line) {
+            continue;
+        }
+        if let Some(c) = show.captures(line) {
+            out.push(ShowRun::Show(c[1].to_string()));
+        } else if let Some(c) = show_at.captures(line) {
+            out.push(ShowRun::Show(c[5].to_string()));
+        } else if let Some(c) = run.captures(line) {
+            out.push(ShowRun::Run(c[1].to_string(), c[2].trim().to_string()));
+        } else {
+            return Err(i + 1);
+        }
+    }
+    Ok(out)
+}
 
 #[cfg(test)]
 mod tests {
+    use super::{parse_show_run, ShowRun};
+
+    #[test]
+    fn show_run_file_follows_the_originals_rules() {
+        let text = "# comment\n\n SHOW \".\\pics\\a.png\"\n-5,10,300,200 SHOW \"b.png\"\nRUN \"https://x.y\" \nRUN \"tool.exe\" -a -b\n";
+        assert_eq!(
+            parse_show_run(text),
+            Ok(vec![
+                ShowRun::Show(".\\pics\\a.png".into()),
+                ShowRun::Show("b.png".into()),
+                ShowRun::Run("https://x.y".into(), "".into()),
+                ShowRun::Run("tool.exe".into(), "-a -b".into()),
+            ])
+        );
+        assert_eq!(parse_show_run("# ok\nshow \"lowercase is not allowed\""), Err(2));
+        assert_eq!(parse_show_run("SHOW \"a.png\" extra"), Err(1));
+    }
+
     #[test]
     fn warns_about_saves_from_other_versions_like_the_original() {
         assert_eq!(super::version_warning(r#"{"Version": "2.1.0"}"#), None);

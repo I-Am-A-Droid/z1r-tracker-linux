@@ -12,6 +12,7 @@ path = "src/main.rs"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+regex = "1.13.1"
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 
 [profile.release]

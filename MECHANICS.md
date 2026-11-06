@@ -291,3 +291,12 @@ Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_fin
 - Applied: when the rebuild's program sits in the original's folder (Z1R_WPF.exe or Z1R_Tracker_settings.json next to
   it), it keeps settings, HotKeys.txt and saves in that folder like the original, so the two share them; otherwise it
   uses the per-user folders listed in README.md.
+
+## Show/Run Custom file (checked 2026-11-06)
+Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_find "ShowRunCustom": 0 matches); from the IL:
+`ShowRunCustom::ParseShowRunCustomFile` (token 0x06002649, RVA 0x87b8c) accepts only these lines (case-sensitive):
+`^\s*$` (blank), `^#(.*)$` (comment), `^\s*SHOW\s*"(.*)"\s*$`, `^\s*(-?\d+),(-?\d+),(\d+),(\d+)\s*SHOW\s*"(.*)"\s*$`
+(window left, top, width, height) and `^\s*RUN\s*"(.*)"\s*(.*)$`. Anything else stops with "Error parsing '%s', line %d"
++ "You should fix this error by editing the text file. Or you can delete it, and pressing the button again will create an
+empty template file in its place." The rebuild now uses the same patterns and message (it used to look for SHOW/RUN
+anywhere, in any case, and skip bad lines). Pictures open in the system's viewer, so the window position is not used.

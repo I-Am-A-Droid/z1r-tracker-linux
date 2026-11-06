@@ -784,3 +784,11 @@ x86_64-unknown-linux-gnu.2.28` (it needs only libc, libm, libpthread, libdl, lib
 libraries are loaded when it runs), saves its logo with `--write-icon`, writes Z-Tracker.AppDir (AppRun,
 z1r-tracker.desktop, icon) and packs it with appimagetool into `dist/Z-Tracker-x86_64.AppImage` (about 7 MB). The
 GitHub job `linux-appimage` does the same on every upload. Tested here: the AppImage starts and draws the tracker.
+
+## Names for the AppImage menu entry (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "ztlogo": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`. The original's version resource has only
+OriginalFilename Z1R_WPF.exe and ProductVersion 2.1.0.0 (FileVersion 2.1.0.2), no description. `Program/MyWindow::.ctor`
+(token 0x0600004d, RVA 0x50f0) names its shortcut ZTracker.lnk with the description "Launch Z-Tracker" and sets the
+window title "Z-Tracker for Zelda 1 Randomizer". Applied: the AppImage's z1r-tracker.desktop uses Name=Z-Tracker,
+GenericName=Z-Tracker for Zelda 1 Randomizer, Comment=Launch Z-Tracker.

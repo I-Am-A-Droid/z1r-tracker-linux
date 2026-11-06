@@ -29,12 +29,14 @@ cp "$BIN" "$APPDIR/usr/bin/z1r-tracker"
 "$APPDIR/usr/bin/z1r-tracker" --write-icon "$APPDIR/z1r-tracker.png"
 cp "$APPDIR/z1r-tracker.png" "$APPDIR/.DirIcon"
 
+# names as the original uses them: its shortcut (ZTracker.lnk, description "Launch Z-Tracker") and its window title
+# ("Z-Tracker for Zelda 1 Randomizer"), both made in Program/MyWindow::.ctor (token 0x0600004d)
 cat > "$APPDIR/z1r-tracker.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Z-Tracker
-GenericName=Zelda 1 Randomizer tracker
-Comment=Item and map tracker for the Zelda 1 Randomizer
+GenericName=Z-Tracker for Zelda 1 Randomizer
+Comment=Launch Z-Tracker
 Exec=z1r-tracker
 Icon=z1r-tracker
 Categories=Game;

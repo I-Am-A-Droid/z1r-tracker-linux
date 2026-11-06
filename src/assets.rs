@@ -7,7 +7,17 @@ use std::collections::HashMap;
 pub struct Sheet {
     pub image: ColorImage,
     pub texture: Option<TextureHandle>,
+    /// pixels per unit: the pictures are drawn in more detail than the units the drawing code uses
+    pub scale: f32,
 }
+
+/// Smooth scaling, with smaller copies for when a picture is shown much smaller than it is drawn.
+const SMOOTH: TextureOptions = TextureOptions {
+    magnification: egui::TextureFilter::Linear,
+    minification: egui::TextureFilter::Linear,
+    wrap_mode: egui::TextureWrapMode::ClampToEdge,
+    mipmap_mode: Some(egui::TextureFilter::Linear),
+};
 
 pub struct Assets {
     sheets: HashMap<String, Sheet>,
@@ -21,25 +31,26 @@ impl Default for Assets {
 
 impl Assets {
     pub fn new() -> Self {
-        let sheets = crate::art::sheets().into_iter().map(|(name, image)| (name.to_string(), Sheet { image, texture: None })).collect();
+        let sheets = crate::art::sheets().into_iter().map(|(name, image, scale)| (name.to_string(), Sheet { image, texture: None, scale })).collect();
         Assets { sheets }
     }
 
-    fn texture(&mut self, ctx: &egui::Context, sheet: &str) -> Option<(egui::TextureId, [usize; 2])> {
+    /// The sheet's texture and its size in units.
+    fn texture(&mut self, ctx: &egui::Context, sheet: &str) -> Option<(egui::TextureId, [f32; 2])> {
         let s = self.sheets.get_mut(sheet)?;
-        let size = s.image.size;
+        let size = [s.image.size[0] as f32 / s.scale, s.image.size[1] as f32 / s.scale];
         if s.texture.is_none() {
-            s.texture = Some(ctx.load_texture(sheet, s.image.clone(), TextureOptions::NEAREST));
+            s.texture = Some(ctx.load_texture(sheet, s.image.clone(), SMOOTH));
         }
         Some((s.texture.as_ref().unwrap().id(), size))
     }
 
-    /// Draws part of a picture sheet (pixel rectangle sx,sy,sw,sh) into `dst`.
+    /// Draws part of a picture sheet (rectangle sx,sy,sw,sh in the sheet's units) into `dst`.
     /// `shade` < 1 darkens; `mirror` flips left-right.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(&mut self, painter: &egui::Painter, sheet: &str, sx: f32, sy: f32, sw: f32, sh: f32, dst: Rect, shade: f32, mirror: bool) -> bool {
         let Some((id, size)) = self.texture(painter.ctx(), sheet) else { return false };
-        let (w, h) = (size[0] as f32, size[1] as f32);
+        let (w, h) = (size[0], size[1]);
         if sx < 0.0 || sy < 0.0 || sx + sw > w + 0.01 || sy + sh > h + 0.01 {
             return false;
         }
@@ -91,9 +102,8 @@ impl Assets {
     pub fn logo(&mut self, p: &egui::Painter, dst: Rect) -> bool {
         self.draw(p, "ZTlogo64x64.png", 0.0, 0.0, 64.0, 64.0, dst, 1.0, false)
     }
-    /// One overworld screen from the map strip (4 maps of 256x88: 1Q, 2Q, mixed-1Q, mixed-2Q).
-    pub fn map_screen(&mut self, p: &egui::Painter, quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
-        let q = quest.clamp(0, 3) as f32;
-        self.draw(p, "s_map_overworld_strip8.png", q * 256.0 + x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
+    /// One overworld screen (the map is 16 x 8 screens of 16 x 11 units; all four overworlds share its ground).
+    pub fn map_screen(&mut self, p: &egui::Painter, _quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
+        self.draw(p, "s_map_overworld_strip8.png", x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
     }
 }

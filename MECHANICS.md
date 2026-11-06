@@ -374,3 +374,16 @@ user strings), native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; 
   "icons7x7 grey"), instead of the earlier plain dimming to 25 %. Pixels that are see-through in the tracker's own
   pictures stay see-through (the original's PNG transparency is 0x00000000, which isn't Color.Transparent, so there it
   turns black; on the black row that looks the same).
+
+## Higher-quality pictures (changed on request)
+The tracker's own pictures are now drawn in much more detail: `src/art.rs` paints smooth shapes (circles, curves,
+polygons, rounded boxes, colour blends) with 4 x 4 samples per pixel, gives every picture a dark edge, smooths the
+monster pixel patterns with Scale2x (8x8 to 32x32) and lights them from above, and writes letters with the 3x5
+alphabet made 4 times bigger and smoothed the same way (the original also uses a 3x5 alphabet,
+`Graphics::paintAlphanumerics3x5`, token 0x06002b17, RVA 0x9a614). Items, markers, rooms and level numbers are drawn
+at 4 pixels per unit (an item is 28 x 28 pixels), monsters and floor drops at 2, the logo at 128 pixels.
+The overworld is drawn at 4 pixels per unit (1024 x 352): the edges between kinds of ground are bent with smooth
+noise, forests get round trees, rock gets boulders, the graveyard gravestones, water a light shore, shallows and
+waves, sand ripples; one kind of land meeting another gets a darker line. All four overworlds share it.
+Each sheet records its scale, so the drawing code still works in the original's units; pictures are scaled smoothly
+(linear filtering with mipmaps) instead of as blocks. Drawing all of them takes about 0.1 s at start-up.

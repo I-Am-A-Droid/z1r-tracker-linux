@@ -1,0 +1,411 @@
+{
+  "version": 1,
+  "values": [
+    {
+      "name": "overworld tile width",
+      "group": "layout",
+      "value": 48,
+      "unit": "px",
+      "source": "$OverworldMapTileCustomization::.cctor (OMTW)"
+    },
+    {
+      "name": "overworld tile height",
+      "group": "layout",
+      "value": 33,
+      "unit": "px",
+      "source": "s_map_overworld_strip8.png 16x11 screens x3"
+    },
+    {
+      "name": "map top",
+      "group": "layout",
+      "value": 150,
+      "unit": "px",
+      "source": "Layout/ApplicationLayout::AddOverworldCanvas"
+    },
+    {
+      "name": "map bottom",
+      "group": "layout",
+      "value": 414,
+      "unit": "px",
+      "source": "$OverworldItemGridUI::.cctor THRU_MAIN_MAP_H"
+    },
+    {
+      "name": "dungeon area top",
+      "group": "layout",
+      "value": 477,
+      "unit": "px",
+      "source": "$OverworldItemGridUI::.cctor START_DUNGEON_AND_NOTES_AREA_H"
+    },
+    {
+      "name": "timeline top",
+      "group": "layout",
+      "value": 840,
+      "unit": "px",
+      "source": "$OverworldItemGridUI::.cctor START_TIMELINE_H"
+    },
+    {
+      "name": "window height",
+      "group": "layout",
+      "value": 967,
+      "unit": "px",
+      "source": "$OverworldItemGridUI::.cctor THRU_TIMELINE_H"
+    },
+    {
+      "name": "window width",
+      "group": "layout",
+      "value": 768,
+      "unit": "px",
+      "source": "16 tiles x OMTW"
+    },
+    {
+      "name": "blockers and notes x",
+      "group": "layout",
+      "value": 450,
+      "unit": "px",
+      "source": "OverworldItemGridUI::get_BLOCKERS_AND_NOTES_OFFSET"
+    },
+    {
+      "name": "main tracker cell",
+      "group": "layout",
+      "value": 30,
+      "unit": "px",
+      "source": "MainTrackerTriforcesAndItems::setup$cont@76"
+    },
+    {
+      "name": "item grid x",
+      "group": "layout",
+      "value": 280,
+      "unit": "px",
+      "source": "Layout/ApplicationLayout::AddItemGridStuff"
+    },
+    {
+      "name": "timer x",
+      "group": "layout",
+      "value": 572,
+      "unit": "px",
+      "source": "Layout/ApplicationLayout::AddItemGridStuff (WEBCAM_LINE+4)"
+    },
+    {
+      "name": "timer font size",
+      "group": "layout",
+      "value": 42,
+      "unit": "pt",
+      "source": "$OverworldItemGridUI::.cctor hmsTimeTextBox"
+    },
+    {
+      "name": "room width",
+      "group": "dungeon",
+      "value": 39,
+      "unit": "px",
+      "source": "DungeonUI constants"
+    },
+    {
+      "name": "room height",
+      "group": "dungeon",
+      "value": 27,
+      "unit": "px",
+      "source": "DungeonUI constants"
+    },
+    {
+      "name": "room pitch x",
+      "group": "dungeon",
+      "value": 51,
+      "unit": "px",
+      "source": "DungeonUI constants"
+    },
+    {
+      "name": "room pitch y",
+      "group": "dungeon",
+      "value": 39,
+      "unit": "px",
+      "source": "DungeonUI constants"
+    },
+    {
+      "name": "heart containers in a seed",
+      "group": "items",
+      "value": 9,
+      "source": "$TrackerModel::.cctor itemNamesAndCounts"
+    },
+    {
+      "name": "level 8 boxes",
+      "group": "items",
+      "value": 3,
+      "source": "TrackerModel/DungeonTrackerInstance::makeDungeons"
+    },
+    {
+      "name": "other level boxes",
+      "group": "items",
+      "value": 2,
+      "source": "TrackerModel/DungeonTrackerInstance::makeDungeons"
+    },
+    {
+      "name": "door repairs 1Q",
+      "group": "overworld",
+      "value": 9,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "door repairs 2Q",
+      "group": "overworld",
+      "value": 10,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "money making games 1Q",
+      "group": "overworld",
+      "value": 5,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "money making games 2Q",
+      "group": "overworld",
+      "value": 6,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "potion shops 1Q",
+      "group": "overworld",
+      "value": 7,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "potion shops 2Q",
+      "group": "overworld",
+      "value": 9,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "hint shops",
+      "group": "overworld",
+      "value": 4,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "take any caves",
+      "group": "overworld",
+      "value": 4,
+      "source": "TrackerModel::overworldTiles"
+    },
+    {
+      "name": "hint zones",
+      "group": "hints",
+      "value": 11,
+      "source": "TrackerModel/HintZone::ToString"
+    },
+    {
+      "name": "location hints",
+      "group": "hints",
+      "value": 11,
+      "source": "$OverworldData::.cctor hintMeanings"
+    },
+    {
+      "name": "room types",
+      "group": "dungeon",
+      "value": 34,
+      "source": "Z1R_Sync.dll RoomType enum"
+    },
+    {
+      "name": "monster kinds",
+      "group": "dungeon",
+      "value": 32,
+      "source": "Z1R_Sync.dll MonsterDetail enum"
+    },
+    {
+      "name": "blocker kinds",
+      "group": "blockers",
+      "value": 16,
+      "source": "TrackerModel/DungeonBlocker"
+    },
+    {
+      "name": "autosave interval",
+      "group": "saving",
+      "value": 60,
+      "unit": "s",
+      "source": "WPFUI/makeAll@1981-404 (DispatcherTimer.Interval = TimeSpan.FromSeconds 60, real time) -> WPFUI/makeAll@2016-415 token 0x06000859 rva 0x1d23c SaveAll(AutoSave)"
+    },
+    {
+      "name": "autosave disk icon time",
+      "group": "saving",
+      "value": 300,
+      "unit": "ms",
+      "source": "WPFUI/makeAll@2022-416 token 0x06000857 (opacity 0.7, Async.Sleep 300)"
+    },
+    {
+      "name": "disk icon x offset from right",
+      "group": "layout",
+      "value": 40,
+      "unit": "px",
+      "source": "Layout/ApplicationLayout::AddDiskIcon token 0x06000dbe rva 0x327c0 (OMTW*16 - 40)"
+    },
+    {
+      "name": "disk icon below timeline top",
+      "group": "layout",
+      "value": 60,
+      "unit": "px",
+      "source": "Layout/ApplicationLayout::AddDiskIcon token 0x06000dbe rva 0x327c0 (START_TIMELINE_H + 60)"
+    },
+    {
+      "name": "middle-click overworld tile",
+      "group": "controls",
+      "value": "toggle circle",
+      "source": "WPFUI/makeAll@552-80::Invoke (ChangedButton 1 -> toggleOverworldMapCircle)"
+    },
+    {
+      "name": "shift-left-click overworld tile",
+      "group": "controls",
+      "value": "label the circle",
+      "source": "WPFUI/makeAll@552-80::Invoke (activateCircleLabelPopup)"
+    },
+    {
+      "name": "shift-right-click overworld tile",
+      "group": "controls",
+      "value": "next circle colour",
+      "source": "WPFUI::makeAll$cont@561 (+100 mod 300)"
+    },
+    {
+      "name": "right-click overworld tile",
+      "group": "controls",
+      "value": "item icon picker only when AllowItemIconOnNonShopTile",
+      "source": "WPFUI::makeAll$cont@561"
+    },
+    {
+      "name": "door click same colour clears",
+      "group": "controls",
+      "value": true,
+      "source": "DungeonUI::installDoorBehavior$cont@917"
+    },
+    {
+      "name": "door shift-click",
+      "group": "controls",
+      "value": "shift-left previous state, shift-right next state",
+      "source": "DungeonUI::installDoorBehavior$cont@917 (Door::Prev / Door::Next)"
+    },
+    {
+      "name": "item box border width",
+      "group": "look",
+      "value": 3,
+      "unit": "px",
+      "source": "Views::MakeBoxItemWithExtraDecorations (StrokeThickness 3)"
+    },
+    {
+      "name": "item box not-had colour",
+      "group": "look",
+      "value": "rgb(168,0,0)",
+      "source": "$CustomComboBoxes::.cctor no"
+    },
+    {
+      "name": "item box have colour",
+      "group": "look",
+      "value": "rgb(50,168,50)",
+      "source": "$CustomComboBoxes::.cctor yes"
+    },
+    {
+      "name": "item box skipped colour",
+      "group": "look",
+      "value": "MediumPurple",
+      "source": "$Graphics::.cctor skipped"
+    },
+    {
+      "name": "door unknown colour",
+      "group": "look",
+      "value": "rgb(30,30,45)",
+      "source": "$Dungeon::.cctor unknown"
+    },
+    {
+      "name": "door no colour",
+      "group": "look",
+      "value": "rgb(145,0,0)",
+      "source": "$Dungeon::.cctor no"
+    },
+    {
+      "name": "door yes colour",
+      "group": "look",
+      "value": "rgb(60,120,60)",
+      "source": "$Dungeon::.cctor yes"
+    },
+    {
+      "name": "door yellow colour",
+      "group": "look",
+      "value": "rgb(160,160,40)",
+      "source": "$Dungeon::.cctor yellow"
+    },
+    {
+      "name": "door purple colour",
+      "group": "look",
+      "value": "rgb(140,30,140)",
+      "source": "$Dungeon::.cctor purple"
+    },
+    {
+      "name": "circle size",
+      "group": "overworld",
+      "value": 31,
+      "unit": "px",
+      "source": "WPFUI::makeOwCircle@358 token 0x060003af rva 0xdb80"
+    },
+    {
+      "name": "circle line",
+      "group": "overworld",
+      "value": 3,
+      "unit": "px",
+      "source": "WPFUI::makeOwCircle@358"
+    },
+    {
+      "name": "circle label size",
+      "group": "overworld",
+      "value": 12,
+      "unit": "pt",
+      "source": "WPFUI::activateCircleLabelPopup$cont@426"
+    },
+    {
+      "name": "circle colours",
+      "group": "overworld",
+      "value": "<100 rgb(0,208,255), 100-199 rgb(255,64,153), >=200 Yellow",
+      "source": "WPFUI::owCircleColor@361 token 0x060003b0; brushes in WPFUI/makeAll@318-46"
+    },
+    {
+      "name": "don't care darkening opacity",
+      "group": "overworld",
+      "value": 0.55,
+      "source": "WPFUI::drawDarkening@404 token 0x060003b2 rva 0xdc0c"
+    },
+    {
+      "name": "reminder interval",
+      "group": "reminders",
+      "value": 5,
+      "unit": "min",
+      "source": "Z1R_Tracker_settings.json ReminderIntervalMinutes; read by Reminders/PeriodicReminders::Check"
+    },
+    {
+      "name": "coast reminder interval factor",
+      "group": "reminders",
+      "value": 0.6,
+      "source": "Reminders/PeriodicReminders::Check token 0x06000d4a rva 0x31178"
+    },
+    {
+      "name": "coast reminder text",
+      "group": "reminders",
+      "value": "Get the coast item with the ladder",
+      "source": "Reminders/PeriodicReminders::Check"
+    },
+    {
+      "name": "screen too short below",
+      "group": "layout",
+      "value": 1000,
+      "unit": "px",
+      "source": "Program/MyWindow::.ctor token 0x0600004d rva 0x50f0 (WorkArea.Height < 1000 * scale)"
+    },
+    {
+      "name": "divider line width",
+      "group": "layout",
+      "value": 3,
+      "unit": "px",
+      "source": "Layout/ShorterApplicationLayout::.ctor token 0x06000dcc rva 0x32b50 (RED_LINE)"
+    },
+    {
+      "name": "divider line colour",
+      "group": "layout",
+      "value": "red",
+      "estimated": true
+    }
+  ]
+}

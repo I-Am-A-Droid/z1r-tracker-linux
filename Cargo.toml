@@ -1,0 +1,17 @@
+[package]
+name = "z1r-tracker"
+version = "2.1.0"
+edition = "2021"
+description = "Z-Tracker for Linux: a Zelda 1 Randomizer tracker"
+
+[[bin]]
+name = "z1r-tracker"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+
+[profile.release]
+opt-level = 3

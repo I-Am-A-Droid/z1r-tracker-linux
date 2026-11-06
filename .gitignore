@@ -1,0 +1,11 @@
+# build output
+/target/
+
+# screenshots taken while building and checking
+/shots/
+
+# leftovers from an earlier .NET attempt (not part of this app)
+/bin/
+/obj/
+/src/*.cs
+/Z1RTracker.csproj

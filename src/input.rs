@@ -1187,6 +1187,18 @@ mod tests {
     }
 
     #[test]
+    fn sword_icons_locate_their_caves() {
+        use crate::view::{progress_name, sword_cave_for, sword_hint_index, Locate};
+        assert_eq!(sword_cave_for("PlayerHasWoodSword"), Some(Locate::Cave(15)));
+        assert_eq!(sword_cave_for("PlayerHasMagicalSword"), Some(Locate::Cave(13)));
+        assert_eq!(sword_hint_index(14), Some(9)); // white sword: hint "(npc) has (item) at"
+        assert_eq!(sword_hint_index(13), Some(10)); // magical sword: "Meet (npc) at"
+        assert_eq!(sword_hint_index(15), None);
+        assert_eq!(progress_name("PlayerHasBoomBook"), "Book");
+        assert_eq!(progress_name("PlayerHasBombs"), "Bombs");
+    }
+
+    #[test]
     fn shop_locator_items_follow_the_original() {
         use crate::view::{shop_item_for_blocker, shop_item_for_progress};
         assert_eq!(shop_item_for_progress("PlayerHasWoodArrow", false), Some(0));

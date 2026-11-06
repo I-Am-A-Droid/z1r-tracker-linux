@@ -684,3 +684,17 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   added; hidden shop markers shown while located; the 0.5 s 12 → 4 px cyan → lime animation, setting
   "AnimateShopHighlights", default on; "no … shop marked yet" when none). `View::locating`, `shop_item_for_progress`,
   `shop_item_for_blocker`, `Tracker::tile_sells`.
+
+## Sword icons locate their caves (asked for)
+Source beside 1.2.3 (OverworldItemGridUI.fs MouseEnter: wood_sword_box → Sword1, white sword → Sword2, mags_box →
+Sword3; WPFUI.fs showLocator): a marked sword cave is shown (the original: magenta tile and crosshair lines via
+showLocatorExactLocation); white / magical sword caves not marked yet fall back to their hint (GetLevelHint 9 / 10):
+showLocatorHintedZone darkens every screen outside the hinted zone (black at opacity 0.7) and outlines the zone with a
+dotted light-grey line. Applied, as asked "the same" as the shops: pointing at the wood sword, white sword box or
+magical sword outlines that cave in the same bold green (animated) outline; if not marked, white/magical darken the
+screens outside their hinted zone (0.7); otherwise "no … cave marked yet" (`Locate::Cave`, `sword_cave_for`,
+`sword_hint_index`).
+
+## The "boomerang or book" box shows as the book (asked for)
+The top section's PlayerHasBoomBook box now uses the book picture and is named "Book" (hover text, timeline); the
+save name stays PlayerHasBoomBook and it still locates book shops.

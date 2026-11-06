@@ -194,7 +194,7 @@ pub struct View {
     shift: Vec2,
     pub wide: bool,
     /// the shop item being located on the map, and when it started (for the original's brief animation)
-    pub locating: Option<(i32, f64)>,
+    pub locating: Option<(Locate, f64)>,
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
@@ -235,6 +235,55 @@ pub fn shop_item_for_progress(key: &str, have_candle: bool) -> Option<i32> {
         _ => None,
     }
 }
+
+/// The book's picture in icons7x7 (used for the "boomerang or book" box, which shows simply as the book).
+pub const BOOK_ICON7: i32 = 8;
+
+/// The name shown for a top-section item: "Book" for the boomerang-or-book box, else the save name without "PlayerHas".
+pub fn progress_name(key: &str) -> &str {
+    match key {
+        "PlayerHasBoomBook" => "Book",
+        k => k.strip_prefix("PlayerHas").unwrap_or(k),
+    }
+}
+
+/// What the mouse is locating on the map: shops selling an item (0-7), or a sword cave (by its mark).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Locate {
+    Shop(i32),
+    Cave(i32),
+}
+
+/// The original's showLocator for the sword icons (OverworldItemGridUI.fs: wood_sword_box → Sword1, white sword →
+/// Sword2, mags_box → Sword3): the cave's mark.
+pub fn sword_cave_for(key: &str) -> Option<Locate> {
+    match key {
+        "PlayerHasWoodSword" => Some(Locate::Cave(15)),
+        "PlayerHasMagicalSword" => Some(Locate::Cave(13)),
+        _ => None,
+    }
+}
+
+/// The hint used when a sword cave isn't marked (WPFUI.fs showLocator: Sword2 → GetLevelHint(9), Sword3 → 10; the
+/// wood sword cave has none).
+pub fn sword_hint_index(mark: i32) -> Option<usize> {
+    match mark {
+        14 => Some(9),
+        13 => Some(10),
+        _ => None,
+    }
+}
+
+pub fn sword_cave_name(mark: i32) -> &'static str {
+    match mark {
+        13 => "magical sword cave",
+        14 => "white sword cave",
+        _ => "wood sword cave",
+    }
+}
+
+/// How dark the screens outside a hinted zone get (WPFUI.fs showLocatorHintedZone: opacity 0.7).
+pub const HINTED_ZONE_DARKEN: u8 = 179;
 
 /// Which shop item a dungeon blocker locates (UIComponents.fs blocker MouseEnter): meat, keys, bombs, bow and arrow
 /// (the "maybe" kinds too).
@@ -406,11 +455,12 @@ impl View {
         self.origin = origin;
         self.now = ui.ctx().input(|i| i.time);
         self.check_coast_reminder();
-        // which shop item (if any) the mouse is locating; restart the brief animation when it changes
+        // what (if anything) the mouse is locating on the map; restart the brief animation when it changes
         let have_candle = self.m.player_has_item(9) || self.m.prog("PlayerHasBlueCandle");
         let item = match self.hover {
-            Target::Progress(key) => shop_item_for_progress(key, have_candle),
-            Target::Blocker(d, s) => self.m.blockers.get(d).and_then(|b| b.get(s)).and_then(|b| BLOCKER_KINDS.get(b.kind)).and_then(|k| shop_item_for_blocker(k)),
+            Target::Progress(key) => sword_cave_for(key).or(shop_item_for_progress(key, have_candle).map(Locate::Shop)),
+            Target::Box(BoxId::WhiteSword) => Some(Locate::Cave(WHITE_SWORD_CAVE_MARK)),
+            Target::Blocker(d, s) => self.m.blockers.get(d).and_then(|b| b.get(s)).and_then(|b| BLOCKER_KINDS.get(b.kind)).and_then(|k| shop_item_for_blocker(k)).map(Locate::Shop),
             _ => None,
         };
         self.locating = match (item, self.locating) {
@@ -596,7 +646,8 @@ impl View {
         self.toggle(p, 2, 0, 20, "PlayerHasMagicalSword");
         self.toggle(p, 3, 0, 19, "PlayerHasWoodSword");
         self.toggle(p, 4, 0, 22, "PlayerHasBlueRing");
-        self.toggle(p, 5, 0, 14, "PlayerHasBoomBook");
+        // the original's "boomerang or book" box, shown simply as the book (asked for); saved as PlayerHasBoomBook
+        self.toggle(p, 5, 0, BOOK_ICON7, "PlayerHasBoomBook");
         self.label_icon(p, 0, 1, 4);
         self.box_at(p, 1, 1, BoxId::Ladder);
         self.toggle(p, 2, 1, 21, "PlayerHasBlueCandle");
@@ -717,7 +768,7 @@ impl View {
                 }
                 // a hidden kind of tile looks like "don't care": darkened, without its marker
                 let settings = &self.settings;
-                let located = self.locating.is_some_and(|(item, _)| self.m.tile_sells(x, y, item));
+                let located = self.locating.is_some_and(|(what, _)| self.locates(what, x, y));
                 let hidden = self.m.tile_hidden(x, y, &|k| settings.get(k)) && !located;
                 if mark >= 0 && mark != DARK_X && !hidden {
                     let shop_items = self.m.shop_items_shown(x, y, &|k| settings.get(k));
@@ -768,7 +819,7 @@ impl View {
         // blocker needing meat / keys / bombs / bow and arrow, outlines every shop selling it
         // (TileHighlightRectangle.MakeGreenWithBriefAnimation: 12 -> 4 px and cyan -> lime over 0.5 s, or plain
         // green 4 px without "AnimateShopHighlights"); if none is marked, says so
-        if let Some((item, since)) = self.locating {
+        if let Some((what, since)) = self.locating {
             let t = ((self.now - since) / SHOP_HIGHLIGHT_SECS).clamp(0.0, 1.0) as f32;
             let (w, c) = if self.settings.get("AnimateShopHighlights") {
                 let lerp = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t).round() as u8;
@@ -780,17 +831,37 @@ impl View {
             for col in 0..16 {
                 for y in 0..8 {
                     let x = self.data_x(col);
-                    if self.m.tile_sells(x, y, item) {
+                    if self.locates(what, x, y) {
                         any = true;
                         let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
                         self.stroke(p, r.shrink(w.min(16.0) / 2.0), w, c);
                     }
                 }
             }
-            if !any {
-                let r = rect(16.0 * TILE_W - 170.0, MAP_Y + 4.0, 166.0, 20.0);
+            // a sword cave not marked yet but hinted: the original's showLocatorHintedZone darkens every screen
+            // outside the hinted zone (black, opacity 0.7)
+            let hint = match what {
+                Locate::Cave(m) => sword_hint_index(m).map(|i| self.m.location_hints[i]).filter(|&z| z != 0),
+                Locate::Shop(_) => None,
+            };
+            if !any && hint.is_some() {
+                let zone = hint.unwrap_or(0);
+                for col in 0..16 {
+                    for y in 0..8 {
+                        if zone_at(self.data_x(col), y) != zone {
+                            self.fill(p, rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H), Color32::from_black_alpha(HINTED_ZONE_DARKEN));
+                        }
+                    }
+                }
+            } else if !any {
+                let what_name = match what {
+                    Locate::Shop(item) => format!("no {} shop marked yet", SHOP_ITEM_NAMES[item as usize].to_lowercase()),
+                    Locate::Cave(m) => format!("no {} marked yet", sword_cave_name(m)),
+                };
+                let w = Self::measure(p, 12.0, &what_name).x + 16.0;
+                let r = rect(16.0 * TILE_W - w - 4.0, MAP_Y + 4.0, w, 20.0);
                 self.fill(p, r, Color32::from_black_alpha(200));
-                self.text_c(p, r, 12.0, Color32::YELLOW, &format!("no {} shop marked yet", SHOP_ITEM_NAMES[item as usize].to_lowercase()));
+                self.text_c(p, r, 12.0, Color32::YELLOW, &what_name);
             }
         }
         if let Target::MapTile(hx, hy) = self.hover {
@@ -1137,6 +1208,14 @@ impl View {
         }
     }
 
+    /// Whether map screen (x, y) is one of the places being located.
+    fn locates(&self, what: Locate, x: usize, y: usize) -> bool {
+        match what {
+            Locate::Shop(item) => self.m.tile_sells(x, y, item),
+            Locate::Cave(mark) => self.m.mark[x][y] == mark,
+        }
+    }
+
     fn draw_door(&self, p: &Painter, r: Rect, state: i32, hovered: bool) {
         let c = DOOR_COLORS[(state.clamp(0, 4)) as usize];
         let inner = if r.width() > r.height() { r.shrink2(Vec2::new(1.0, 3.0)) } else { r.shrink2(Vec2::new(3.0, 1.0)) };
@@ -1253,7 +1332,7 @@ impl View {
             "BlueRing" => 22,
             "BlueCandle" => 21,
             "WoodArrow" => 11,
-            "BoomBook" => 14,
+            "BoomBook" => BOOK_ICON7,
             "Bombs" => 25,
             "Ganon" => 23,
             "Zelda" => 24,
@@ -1309,7 +1388,7 @@ impl View {
                 format!("Level {}{hint}\nclick: set the hinted zone   R-click: clear", d + 1)
             }
             Target::Toggle14 => "Click to choose which dungeon (1 or 4)\nhas the third item box".into(),
-            Target::Progress(k) => format!("{} - click to toggle", &k[9..]),
+            Target::Progress(k) => format!("{} - click to toggle", progress_name(k)),
             Target::TakeAny(_) => "Take Any heart: click to cycle taken / skipped / unknown".into(),
             Target::HeartsAdjust => "Max hearts: L-click +1, R-click -1 (for extra hearts not in a box)".into(),
             Target::Blocker(d, s) => format!("Level {} blocker: {}", d + 1, BLOCKER_NAMES[self.m.blockers[*d][*s].kind]),

@@ -49,6 +49,9 @@ Settings and `HotKeys.txt` are copied from the original's folder the first time 
 | Windows | `%APPDATA%\z1r-tracker\` | `%LOCALAPPDATA%\z1r-tracker\saves\` |
 | macOS | `~/Library/Application Support/z1r-tracker/` | `~/Library/Application Support/z1r-tracker/saves/` |
 
+If you put the program in the original Z-Tracker's folder (next to `Z1R_WPF.exe`), it keeps settings, hot keys and
+saves in that folder instead, exactly like the original, so both programs share them.
+
 The window can be resized freely and everything scales; when the window is wide, the dungeon maps and timeline move
 beside the overworld map.
 

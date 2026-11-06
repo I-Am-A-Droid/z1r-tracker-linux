@@ -280,3 +280,14 @@ x86_64-pc-windows-gnu, aarch64-apple-darwin and x86_64-apple-darwin. Only `src/p
 and save folders, opening files/links (xdg-open / explorer / open) and the local time for save names. The tracker's
 behaviour and the save-file format are the same everywhere. `.github/workflows/build.yml` builds and tests all of them
 on GitHub and offers the programs as downloads.
+
+## Where the original keeps its files (checked 2026-11-06)
+Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_find "zt-save": 0 matches); from the IL:
+- `TrackerModelOptions::readSettings` (Z1R_Tracker.dll token 0x0600075c, RVA 0x1521c): settings file =
+  AppDomain.BaseDirectory + "Z1R_Tracker_settings.json" (the program's own folder). HotKeys.txt is read from there too.
+- `SaveAndLoad::SaveAll` (token 0x06000013): saves go to BaseDirectory + "zt-save-manual-" / "zt-save-completed-" +
+  DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".json"; the autosave is BaseDirectory + "zt-save-zz-autosave.json"
+  (`$SaveAndLoad::.cctor`, token 0x06000223). The rebuild uses the same names and the same local-time format.
+- Applied: when the rebuild's program sits in the original's folder (Z1R_WPF.exe or Z1R_Tracker_settings.json next to
+  it), it keeps settings, HotKeys.txt and saves in that folder like the original, so the two share them; otherwise it
+  uses the per-user folders listed in README.md.

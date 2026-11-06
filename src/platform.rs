@@ -19,6 +19,9 @@ fn env_dir(var: &str) -> Option<PathBuf> {
 /// Settings and HotKeys.txt:
 /// Linux ~/.config/z1r-tracker, Windows %APPDATA%\z1r-tracker, macOS ~/Library/Application Support/z1r-tracker.
 pub fn config_dir() -> PathBuf {
+    if let Some(dir) = original_folder() {
+        return dir;
+    }
     let base = if cfg!(windows) {
         env_dir("APPDATA").unwrap_or_else(|| home().join("AppData").join("Roaming"))
     } else if cfg!(target_os = "macos") {
@@ -33,6 +36,9 @@ pub fn config_dir() -> PathBuf {
 /// Linux ~/.local/share/z1r-tracker/saves, Windows %LOCALAPPDATA%\z1r-tracker\saves,
 /// macOS ~/Library/Application Support/z1r-tracker/saves.
 pub fn save_dir() -> PathBuf {
+    if let Some(dir) = original_folder() {
+        return dir;
+    }
     let base = if cfg!(windows) {
         env_dir("LOCALAPPDATA").unwrap_or_else(|| home().join("AppData").join("Local")).join(APP_DIR)
     } else if cfg!(target_os = "macos") {
@@ -41,6 +47,19 @@ pub fn save_dir() -> PathBuf {
         env_dir("XDG_DATA_HOME").unwrap_or_else(|| home().join(".local").join("share")).join(APP_DIR)
     };
     base.join("saves")
+}
+
+/// When the tracker sits in the original Z-Tracker's folder (next to Z1R_WPF.exe or Z1R_Tracker_settings.json), it
+/// keeps settings, HotKeys.txt and saves right there, as the original does: it uses AppDomain.BaseDirectory for
+/// Z1R_Tracker_settings.json (TrackerModelOptions::readSettings, token 0x0600075c) and for every zt-save-*.json
+/// (SaveAndLoad::SaveAll, token 0x06000013; $SaveAndLoad::.cctor for the autosave). The two then share them.
+pub fn original_folder() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    is_original_folder(exe.parent()?).then(|| exe.parent().unwrap().to_path_buf())
+}
+
+pub fn is_original_folder(dir: &std::path::Path) -> bool {
+    dir.join("Z1R_WPF.exe").is_file() || dir.join("Z1R_Tracker_settings.json").is_file()
 }
 
 /// Opens a file, folder or web address with the system's default program.
@@ -61,4 +80,16 @@ pub fn open(target: impl AsRef<OsStr>) {
 /// Local date and time as yyyy-MM-dd-HH-mm-ss, for save-file names.
 pub fn timestamp() -> String {
     chrono::Local::now().format("%Y-%m-%d-%H-%M-%S").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn recognises_the_originals_folder() {
+        let orig = std::path::Path::new("/home/jason/Downloads/ZTracker_v2.1.0.2");
+        if orig.exists() {
+            assert!(super::is_original_folder(orig));
+        }
+        assert!(!super::is_original_folder(&std::env::temp_dir().join("no-such-z1r-folder")));
+    }
 }

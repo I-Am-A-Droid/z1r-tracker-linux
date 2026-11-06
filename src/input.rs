@@ -16,6 +16,21 @@ enum Btn {
 
 /// Columns of the map-marking pop-up (asked for: 9, so the nine levels share a row).
 pub const MARK_PICKER_COLS: usize = 9;
+/// An empty cell in the marking pop-up.
+pub const PICKER_BLANK: i32 = -99;
+/// The marking pop-up's rows, as asked for (marks; -1 = none):
+/// don't care, none, arrow, bomb, key, meat, candle, shield, ring (the book shop is left out);
+/// levels 1-9;
+/// any roads 1-4, wood sword, white sword, magical sword caves, Armos, the letter;
+/// unknown, large, medium, small secret, door repair, money making game;
+/// Take Any, potion shop, hint shop, Start, P2.
+pub const MARK_PICKER_LAYOUT: [[i32; MARK_PICKER_COLS]; 5] = [
+    [35, -1, 16, 17, 22, 21, 19, 23, 20],
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    [9, 10, 11, 12, 15, 14, 13, 31, 30],
+    [24, 25, 26, 27, 28, 29, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK],
+    [33, 34, 32, 36, 37, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK, PICKER_BLANK],
+];
 
 /// Where the marking pop-up goes, as in the original (WPFUI::activatePopup@703-45, token in the IL listing at line
 /// 17280): just below the tile; left-aligned with it for the first two columns (−3 px), right-aligned for the last two
@@ -278,7 +293,11 @@ impl View {
     fn choose(&mut self, action: Action, i: usize, right: bool) {
         match action {
             Action::Mark(x, y, order) => {
-                self.set_mark(x, y, order.get(i).copied().unwrap_or(-1));
+                let m = order.get(i).copied().unwrap_or(-1);
+                if m == PICKER_BLANK {
+                    return;
+                }
+                self.set_mark(x, y, m);
                 self.after_mark(x, y);
             }
             Action::ShopSecond(x, y) => {
@@ -600,10 +619,20 @@ impl View {
 
     /// `_click`: where the click was; the pop-up is placed by the tile instead, as in the original.
     pub fn open_mark_picker(&mut self, x: usize, y: usize, _click: Pos2) {
-        let order = self.mark_order();
+        let order: Vec<i32> = MARK_PICKER_LAYOUT.iter().flatten().copied().collect();
         let title = format!("Mark {}{} ({})", (b'A' + y as u8) as char, x + 1, HINT_ZONE_NAMES[zone_at(x, y)]);
         let mut pop = Popup::new(title, MARK_PICKER_COLS, 54.0, 39.0, mark_picker_anchor(x, y, self.m.mirror), Action::Mark(x, y, order.clone()));
         for &m in &order {
+            if m == PICKER_BLANK {
+                let mut c = Choice::new(Icon::None, "", "").en(false);
+                c.fill = Some(Color32::from_rgb(16, 16, 24));
+                pop.choices.push(c);
+                continue;
+            }
+            if m == -1 {
+                pop.choices.push(Choice::new(Icon::None, "none", "Unmarked").sel(self.m.mark[x][y] == -1));
+                continue;
+            }
             let t = &TILES[m as usize];
             let (used, max) = (self.m.uses_of_mark(m), self.m.max_uses(m));
             let label = if max < 999 { format!("{}  ({used}/{max} used)", t.name) } else { t.name.to_string() };
@@ -614,8 +643,6 @@ impl View {
             };
             pop.choices.push(Choice::new(Icon::Ow(TILE_STRIP_INDEX[m as usize]), text, label).en(self.m.can_use(m, x, y)).sel(self.m.mark[x][y] == m));
         }
-        // "none" comes last, so with 9 columns levels 1-9 share the first row
-        pop.choices.push(Choice::new(Icon::None, "none", "Unmarked").sel(self.m.mark[x][y] == -1));
         self.popup = Some(pop);
     }
 
@@ -1208,6 +1235,27 @@ mod tests {
         v.choose(Action::Starting, at(ExtraCell::HeartsUp), false);
         v.choose(Action::Starting, at(ExtraCell::HeartsDown), false);
         assert_eq!(v.m.max_hearts(), before + 1);
+    }
+
+    #[test]
+    fn marking_popup_has_the_asked_for_rows() {
+        let all: Vec<i32> = MARK_PICKER_LAYOUT.iter().flatten().copied().filter(|&m| m != PICKER_BLANK).collect();
+        // every mark once, plus "none", without the book shop (18)
+        let mut want: Vec<i32> = (-1..38).filter(|&m| m != 18).collect();
+        let mut got = all.clone();
+        got.sort();
+        want.sort();
+        assert_eq!(got, want);
+        assert_eq!(MARK_PICKER_LAYOUT[0][..2], [35, -1]); // don't care, none
+        assert_eq!(MARK_PICKER_LAYOUT[1], [0, 1, 2, 3, 4, 5, 6, 7, 8]); // levels 1-9
+        // picking from the real pop-up marks the tile
+        let mut v = view();
+        v.m.started = true;
+        v.open_mark_picker(3, 3, Pos2::ZERO);
+        let Some(Action::Mark(x, y, order)) = v.popup.as_ref().map(|p| p.action.clone()) else { panic!() };
+        let i = order.iter().position(|&m| m == 31).unwrap(); // Armos
+        v.choose(Action::Mark(x, y, order), i, false);
+        assert_eq!(v.m.mark[3][3], 31);
     }
 
     #[test]

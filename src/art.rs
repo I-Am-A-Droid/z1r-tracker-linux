@@ -713,6 +713,17 @@ const LEVEL_COLORS: [C; 9] = [
 ];
 const SHOP_COLOR: C = hex(0xef8300);
 
+/// Black or white letters on a coloured background, by the original's rule (`Graphics::isBlackGoodContrast`,
+/// token 0x06002b01, RVA 0x9a164): black when 0.2126 R² + 0.7152 G² + 0.0722 B² > 0.5 × 0.5 (R, G, B from 0 to 1),
+/// otherwise white. The original uses it for the labels on each dungeon's colour.
+pub fn black_is_good_contrast(bg: C) -> bool {
+    0.2126 * bg.0 * bg.0 + 0.7152 * bg.1 * bg.1 + 0.0722 * bg.2 * bg.2 > 0.5 * 0.5
+}
+
+fn letters_on(bg: C) -> C {
+    if black_is_good_contrast(bg) { hex(0x101014) } else { WHITE }
+}
+
 /// A marker's box: rounded, with a darker edge and a soft blend from top to bottom. Units are the 16 x 11 marker.
 fn marker_box(p: &mut Pen, bg: C) {
     p.rrect(0.15, 0.15, 15.7, 10.7, 2.0, Paint::S(bg.shade(0.45)));
@@ -743,11 +754,11 @@ fn marker_img(i: usize) -> Img {
         0 => marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), hex(0x2a1834)),
         1 => {
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), hex(0x9a9aa4));
-            text_c(&mut img, 32.0, 22.0, "L?", black);
+            text_c(&mut img, 32.0, 22.0, "L?", letters_on(hex(0x9a9aa4)));
         }
         2..=10 => {
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), LEVEL_COLORS[i - 2]);
-            text_c(&mut img, 32.0, 22.0, &format!("L{}", i - 1), black);
+            text_c(&mut img, 32.0, 22.0, &format!("L{}", i - 1), letters_on(LEVEL_COLORS[i - 2]));
         }
         11..=14 => {
             let mut p = Pen::new(&mut img, 0.0, 0.0, 4.0);
@@ -756,12 +767,12 @@ fn marker_img(i: usize) -> Img {
                 let s = s as f32;
                 p.rect(8.0 + s * 1.6, 3.0 + s * 1.9, 5.6 - s * 1.6, 1.5, Paint::V(hex(0x6a4ac8), hex(0x3c2878), 3.0, 9.0));
             }
-            text_c(&mut img, 18.0, 22.0, &format!("{}", i - 10), black);
+            text_c(&mut img, 18.0, 22.0, &format!("{}", i - 10), letters_on(hex(0xe496ec)));
         }
         15 => {
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), hex(0xc0242e));
             item(&mut img, 15, 6, 6, 32);
-            text_c(&mut img, 48.0, 22.0, "?", WHITE);
+            text_c(&mut img, 48.0, 22.0, "?", letters_on(hex(0xc0242e)));
         }
         16 => {
             let mut p = Pen::new(&mut img, 0.0, 0.0, 4.0);
@@ -786,12 +797,12 @@ fn marker_img(i: usize) -> Img {
         19..=21 => {
             let (sword, bg) = [(20, hex(0xe66e6e)), (17, hex(0x6e96f0)), (19, hex(0xc8aa6e))][i - 19];
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), bg);
-            text_c(&mut img, 16.0, 22.0, &format!("{}", 3 - (i - 19)), black);
+            text_c(&mut img, 16.0, 22.0, &format!("{}", 3 - (i - 19)), letters_on(bg));
             item(&mut img, sword, 26, 4, 36);
         }
         22 => {
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), hex(0xa082dc));
-            text_c(&mut img, 32.0, 22.0, "???", black);
+            text_c(&mut img, 32.0, 22.0, "???", letters_on(hex(0xa082dc)));
         }
         23..=31 => {
             marker_box(&mut Pen::new(&mut img, 0.0, 0.0, 4.0), SHOP_COLOR);
@@ -841,7 +852,7 @@ fn level_number_img(i: usize) -> Img {
         let face = if found { Paint::V(col.mix(WHITE, 0.25), col.shade(0.8), 0.8, 8.2) } else { Paint::V(hex(0x24242e), hex(0x101016), 0.8, 8.2) };
         p.rrect(0.8, 0.8, 7.4, 7.4, 1.1, face);
     }
-    text_c(&mut img, 18.0, 18.0, &format!("{}", l + 1), if found { hex(0x101014) } else { col });
+    text_c(&mut img, 18.0, 18.0, &format!("{}", l + 1), if found { letters_on(col) } else { col });
     img
 }
 
@@ -1374,6 +1385,17 @@ mod tests {
             let units = [(s.1.size[0] as f32 / s.2) as usize, (s.1.size[1] as f32 / s.2) as usize];
             assert_eq!(units, size, "{name}");
         }
+    }
+
+    #[test]
+    fn black_or_white_letters_follow_the_originals_rule() {
+        use super::{black_is_good_contrast, hex};
+        assert!(black_is_good_contrast(hex(0xffffff)));
+        assert!(!black_is_good_contrast(hex(0x000000)));
+        assert!(black_is_good_contrast(hex(0xf0dc28))); // yellow
+        assert!(!black_is_good_contrast(hex(0x0000ff))); // blue: 0.0722 < 0.25
+        assert!(!black_is_good_contrast(hex(0xff0000))); // red: 0.2126 < 0.25
+        assert!(black_is_good_contrast(hex(0x00ff00))); // green: 0.7152 > 0.25
     }
 
     #[test]

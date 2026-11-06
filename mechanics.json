@@ -449,6 +449,12 @@
       "group": "pictures",
       "value": 0.5,
       "source": "Graphics::darken token 0x06002b07 rva 0x9a3cc"
+    },
+    {
+      "name": "black-text contrast threshold",
+      "group": "pictures",
+      "value": 0.25,
+      "source": "Graphics::isBlackGoodContrast token 0x06002b01 rva 0x9a164 (0.2126R\u00b2+0.7152G\u00b2+0.0722B\u00b2 > 0.5*0.5)"
     }
   ]
 }

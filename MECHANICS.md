@@ -387,3 +387,17 @@ noise, forests get round trees, rock gets boulders, the graveyard gravestones, w
 waves, sand ripples; one kind of land meeting another gets a darker line. All four overworlds share it.
 Each sheet records its scale, so the drawing code still works in the original's units; pictures are scaled smoothly
 (linear filtering with mipmaps) instead of as blocks. Drawing all of them takes about 0.1 s at start-up.
+
+## Black or white letters on coloured boxes (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "alphanumerics": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the .NET IL.
+- `Graphics::makeColor(int)` (token 0x06002b00, RVA 0x9a124): a colour number 0xRRGGBB split as R = (n & 0xFF0000) / 65536,
+  G = (n & 0xFF00) / 256, B = n & 0xFF.
+- `Graphics::isBlackGoodContrast(int)` (token 0x06002b01, RVA 0x9a164): with R, G, B divided by 255, black letters
+  are used when 0.2126 R² + 0.7152 G² + 0.0722 B² > 0.5 × 0.5; otherwise white.
+- Used for the labels drawn on each dungeon's colour: `MainTrackerTriforcesAndItems/setup@213-18` (token 0x06000c48,
+  RVA 0x2e050), `DungeonUI/makeDungeonTabs@739-61` (0x06001d25, RVA 0x6521c), `DungeonUI/update@1338-9`
+  (0x06001e50, RVA 0x6822c), `DungeonUI/makeDungeonTabs@1344-164` (0x06001e54, RVA 0x6833c), `Views::redraw@204-6`
+  (0x0600217c, RVA 0x79268).
+- Applied: the letters and numbers on the tracker's own map markers and on found level numbers now take black or
+  white by this rule from their box colour (`art::black_is_good_contrast`), instead of always black.

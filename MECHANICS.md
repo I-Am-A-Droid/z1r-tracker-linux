@@ -266,3 +266,10 @@ Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_fin
   file might not work", others "Loading this file will probably fail", inside "You are running Z-Tracker version '%s'
   but the save file was created using version '%s'. %s, but Z-Tracker will attempt to load it anyway." The original
   asks with an "Attempt Load" button; the rebuild shows the same message and loads.
+
+## Timer text (checked 2026-11-06)
+Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_find "%2d:%02d": 0 matches); from the IL:
+`Program/MyWindow::Update` (token 0x0600004e, RVA 0x68a4) writes `sprintf "%2d:%02d:%02d"` of TimeSpan.Hours, Minutes and
+Seconds to the timer box (and the broadcast timer): hours padded to two places with a space, and wrapping after 23
+because TimeSpan.Hours leaves out whole days. The rebuild now writes the timer the same way (it used to show unpadded,
+unwrapped hours).

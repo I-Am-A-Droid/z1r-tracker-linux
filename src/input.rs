@@ -1021,6 +1021,14 @@ mod tests {
     }
 
     #[test]
+    fn timer_reads_like_the_original() {
+        assert_eq!(crate::view::timer_text(0), " 0:00:00");
+        assert_eq!(crate::view::timer_text(3725), " 1:02:05");
+        assert_eq!(crate::view::timer_text(12 * 3600 + 59), "12:00:59");
+        assert_eq!(crate::view::timer_text(25 * 3600), " 1:00:00");
+    }
+
+    #[test]
     fn other_marks_do_not_open_the_item_picker() {
         let mut v = view();
         let order: Vec<i32> = (0..TILES.len() as i32).collect();

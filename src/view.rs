@@ -197,6 +197,14 @@ pub fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
     Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h))
 }
 
+/// The timer text, as the original writes it (Program/MyWindow::Update, token 0x0600004e, RVA 0x68a4):
+/// "%2d:%02d:%02d" of TimeSpan.Hours / Minutes / Seconds, so hours are padded to two places with a space and
+/// wrap after 23 (TimeSpan.Hours leaves out whole days).
+pub fn timer_text(seconds: i64) -> String {
+    let s = seconds.max(0);
+    format!("{:>2}:{:02}:{:02}", (s / 3600) % 24, (s / 60) % 60, s % 60)
+}
+
 /// A w x h box centered in `outer`, on whole pixels so the pictures stay sharp.
 pub fn centered_in(outer: Rect, w: f32, h: f32) -> Rect {
     rect((outer.min.x + (outer.width() - w) / 2.0).floor(), (outer.min.y + (outer.height() - h) / 2.0).floor(), w, h)
@@ -573,7 +581,7 @@ impl View {
 
         if !self.settings.get("HideTimer") {
             let s = self.m.seconds;
-            let txt = format!("{}:{:02}:{:02}", s / 3600, (s / 60) % 60, s % 60);
+            let txt = timer_text(s);
             self.text(p, TIMER_X, 0.0, 42.0, if self.paused { Color32::GRAY } else { LIGHT_GREEN }, &txt);
         }
         if self.paused {

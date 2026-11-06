@@ -595,3 +595,18 @@ do NOT yet have the triforce"). Saved as `RecorderToNewDungeons` (default true) 
 - Applied: `Tracker::recorder_destinations`, `View::draw_recorder_destinations`; the legend is now one tighter row
   ending with the diamond, "Recorder" and a "..." button that opens "Recorder settings" (the explanations show as
   each choice's description).
+
+## Recorder destinations in 2.1.0 (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Recorder settings": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `TrackerModel/recorderDests@1668::GenerateNext` (token 0x0600064c, RVA 0x11c48): only if haveRecorder; for t in
+  0..7 with (hasTri, idx) = doesPlayerHaveTriforceAndWhichDungeonIndexIsIt(t), skipped when hasTri equals
+  recorderToUnbeatenDungeons; with recorderToNewDungeons it yields (dungeonLocations[idx], idx) unless idx is -1 or
+  the location is NOTFOUND; otherwise (vanilla location t, t). Same as the 1.3.1 source.
+- `<StartupCode$Z1R_Tracker>.$OverworldData` initialiser: vanilla1QDungeonLocations = (7,3) (12,3) (4,7) (5,4) (11,0)
+  (2,2) (2,4) (13,6) (5,0); the rebuild's table for levels 1-8 matches.
+- `WPFUI/makeAll@1074-166` RoutingInfo (IL listing line 29663): black square 35 x 35, edge 3, turned 45 degrees,
+  BlurEffect radius 5; the coloured one the same without blur; both at (OMTW*i + 23, 33*j - 9); vanilla numbers: font
+  12, bold, white on black, 2 px from the left and bottom.
+- Applied: the diamond is now placed exactly there, centre (23, 15.75) in the screen instead of the screen's middle
+  (`RECORDER_DIAMOND_X`, `RECORDER_DIAMOND_Y` in src/view.rs).

@@ -239,6 +239,9 @@ pub const CIRCLE_LABEL_SIZE: f32 = 12.0;
 pub const DONT_CARE_OPACITY: f32 = 0.55;
 /// The recorder destination diamond: a square this wide, turned 45 degrees (WPFUI.fs recorderingCanvas).
 pub const RECORDER_DIAMOND: f32 = 35.0;
+/// Where the turned square's corner is placed in the screen (WPFUI/makeAll@1074-166 RoutingInfo: OMTW*i+23, 33*j-9).
+pub const RECORDER_DIAMOND_X: f32 = 23.0;
+pub const RECORDER_DIAMOND_Y: f32 = -9.0;
 /// Its colour: rgb(220,220,220) for "Recorder to new dungeons", white for the vanilla locations
 /// (UIComponents.fs RecorderEllipseColor).
 pub fn recorder_color(to_new_dungeons: bool) -> Color32 {
@@ -1034,8 +1037,10 @@ impl View {
         for ((x, y), t) in self.m.recorder_destinations() {
             let screen_col = if self.m.mirror { 15 - x } else { x };
             let tile = rect(screen_col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
-            let c = self.r(tile).center();
+            // the original turns the square about its top-left corner, placed at (+23, -9) in the screen, so the
+            // diamond's centre is at (23, -9 + 35/sqrt 2) = (23, 15.75)
             let h = RECORDER_DIAMOND / std::f32::consts::SQRT_2;
+            let c = self.r(tile).min + Vec2::new(RECORDER_DIAMOND_X, RECORDER_DIAMOND_Y + h);
             let pts = vec![c + Vec2::new(0.0, -h), c + Vec2::new(h, 0.0), c + Vec2::new(0.0, h), c + Vec2::new(-h, 0.0)];
             p.add(egui::Shape::closed_line(pts.clone(), Stroke::new(7.0, Color32::from_black_alpha(110))));
             p.add(egui::Shape::closed_line(pts, Stroke::new(3.0, col)));

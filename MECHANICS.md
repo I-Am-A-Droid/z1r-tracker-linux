@@ -358,3 +358,19 @@ number still holds:
 - `ZTlogo64x64.png` and the window icon: a gold triforce over "ZT" on a dark blue tile.
 Settings and HotKeys.txt are no longer copied from the original's folder on first start; the original-folder mode now
 looks only for Z1R_Tracker_settings.json. Save files stay compatible both ways.
+
+## Grey pictures for items not had yet (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "icons7x7": 0 matches (the names are .NET
+user strings), native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `Graphics::greyscale` (token 0x06002b03, RVA 0x9a278) maps every pixel with `Graphics/greyscale@248::Invoke`
+  (token 0x06002c7b, RVA 0x9cd28): a pixel equal to Color.Transparent stays; otherwise s = (R + G + B) / 5 (integer
+  division) and the pixel becomes grey (v, v, v) with v = 0 if s = 0, else s + 60. (White becomes 213.)
+- `UIComponents::MakeItemProgressBar` (token in the IL listing at line 82959) shows an item not had yet as its greyscale
+  picture, e.g. the candle slot is [greyscale red candle, blue candle, red candle].
+- Also in `Graphics`: `darken` = `darkenImpl 0.5` (token 0x06002b07, RVA 0x9a3cc; each of R, G, B times the factor,
+  cut to a whole number), and `desaturateColor(c, f)` (token 0x06002b04, RVA 0x9a288): L = 0.3 R + 0.6 G + 0.1 B, each
+  channel = channel + f × (L − channel).
+- Applied: the item progress row now draws items not had yet with the greyscale rule (`art::grey_level`, sheet
+  "icons7x7 grey"), instead of the earlier plain dimming to 25 %. Pixels that are see-through in the tracker's own
+  pictures stay see-through (the original's PNG transparency is 0x00000000, which isn't Color.Transparent, so there it
+  turns black; on the black row that looks the same).

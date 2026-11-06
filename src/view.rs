@@ -837,7 +837,13 @@ impl View {
         let mut x = FIRST_PROGRESS_X;
         for v in list {
             let (icon, have) = if v >= 0 { (v, true) } else { (-v - 1, false) };
-            self.assets.item7(p, icon, self.r(rect(x + 4.0, PROGRESS_Y + 4.0, 21.0, 21.0)), if have { 1.0 } else { 0.25 });
+            // not had yet: the original's grey picture (UIComponents::MakeItemProgressBar uses Graphics::greyscale)
+            let dst = self.r(rect(x + 4.0, PROGRESS_Y + 4.0, 21.0, 21.0));
+            if have {
+                self.assets.item7(p, icon, dst, 1.0);
+            } else {
+                self.assets.item7_grey(p, icon, dst);
+            }
             x += CELL;
         }
     }

@@ -660,6 +660,28 @@ pub fn logo() -> Canvas {
 
 // ------------------------------------------------------------------------------------------------ all sheets
 
+/// The original's grey version of a picture (`Graphics::greyscale`, token 0x06002b03, RVA 0x9a278, pixel rule
+/// `Graphics/greyscale@248::Invoke`, token 0x06002c7b, RVA 0x9cd28): s = (R + G + B) / 5 (whole numbers), grey level
+/// 0 if s is 0, else s + 60; see-through pixels stay see-through.
+pub fn grey_level(c: Color32) -> u8 {
+    let s = (c.r() as u32 + c.g() as u32 + c.b() as u32) / 5;
+    if s == 0 { 0 } else { (s + 60) as u8 }
+}
+
+fn greyscale(img: &ColorImage) -> ColorImage {
+    let mut out = img.clone();
+    for px in out.pixels.iter_mut() {
+        if px.a() > 0 {
+            let v = grey_level(*px);
+            *px = rgb(v, v, v);
+        }
+    }
+    out
+}
+
+/// The item pictures in grey, for items not had yet in the progress row.
+pub const GREY_ITEMS: &str = "icons7x7 grey";
+
 /// Every picture sheet, by the name the drawing code asks for.
 pub fn sheets() -> Vec<(&'static str, ColorImage)> {
     let mut icons7 = Canvas::new(32 * 7, 7);
@@ -683,6 +705,7 @@ pub fn sheets() -> Vec<(&'static str, ColorImage)> {
     }
     vec![
         ("icons7x7.png", icons7.image()),
+        (GREY_ITEMS, greyscale(&icons7.image())),
         ("icons3x7.png", shop3.image()),
         ("icons8x8.png", heart8.image()),
         ("icons10x10.png", icons10().image()),
@@ -724,6 +747,15 @@ mod tests {
             let s = sheets.iter().find(|s| s.0 == name).unwrap_or_else(|| panic!("{name} missing"));
             assert_eq!(s.1.size, size, "{name}");
         }
+    }
+
+    #[test]
+    fn grey_follows_the_originals_formula() {
+        use eframe::egui::Color32;
+        assert_eq!(super::grey_level(Color32::from_rgb(0, 0, 0)), 0);
+        assert_eq!(super::grey_level(Color32::from_rgb(255, 255, 255)), 213); // 765 / 5 + 60
+        assert_eq!(super::grey_level(Color32::from_rgb(226, 44, 44)), 122); // 314 / 5 = 62, + 60
+        assert_eq!(super::grey_level(Color32::from_rgb(1, 1, 2)), 0); // 4 / 5 = 0
     }
 
     #[test]

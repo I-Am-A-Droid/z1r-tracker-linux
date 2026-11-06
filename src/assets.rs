@@ -58,6 +58,10 @@ impl Assets {
     pub fn item7(&mut self, p: &egui::Painter, i: i32, dst: Rect, shade: f32) -> bool {
         i >= 0 && self.draw(p, "icons7x7.png", i as f32 * 7.0, 0.0, 7.0, 7.0, dst, shade, false)
     }
+    /// An item picture in the original's grey (for items not had yet).
+    pub fn item7_grey(&mut self, p: &egui::Painter, i: i32, dst: Rect) -> bool {
+        i >= 0 && self.draw(p, crate::art::GREY_ITEMS, i as f32 * 7.0, 0.0, 7.0, 7.0, dst, 1.0, false)
+    }
     /// Shop item picture (3x7 game pixels): 0 arrow, 1 bomb, 2 book, 3 candle, 4 blue ring, 5 meat, 6 key, 7 shield.
     pub fn shop_item(&mut self, p: &egui::Painter, i: i32, dst: Rect) -> bool {
         (0..8).contains(&i) && self.draw(p, "icons3x7.png", i as f32 * 3.0, 0.0, 3.0, 7.0, dst, 1.0, false)

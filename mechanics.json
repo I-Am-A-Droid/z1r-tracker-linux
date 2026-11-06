@@ -431,6 +431,24 @@
       "group": "window",
       "value": "icons/ztlogo64x64.ico",
       "source": "Program/MyWindow::.ctor token 0x0600004d rva 0x50f0 (IShellLink::SetIconLocation, ZTracker.lnk)"
+    },
+    {
+      "name": "greyscale divisor",
+      "group": "pictures",
+      "value": 5,
+      "source": "Graphics/greyscale@248::Invoke token 0x06002c7b rva 0x9cd28 ((R+G+B)/5)"
+    },
+    {
+      "name": "greyscale offset",
+      "group": "pictures",
+      "value": 60,
+      "source": "Graphics/greyscale@248::Invoke token 0x06002c7b rva 0x9cd28 (s+60 unless s=0)"
+    },
+    {
+      "name": "darken factor",
+      "group": "pictures",
+      "value": 0.5,
+      "source": "Graphics::darken token 0x06002b07 rva 0x9a3cc"
     }
   ]
 }

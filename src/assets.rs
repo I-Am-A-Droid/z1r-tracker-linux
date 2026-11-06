@@ -150,6 +150,13 @@ impl Assets {
         self.draw(p, CUSTOM_MAP, x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
     }
 
+    /// A whole sheet drawn into `dst` at the given opacity (e.g. the item reference pictures).
+    pub fn sheet_faded(&mut self, p: &egui::Painter, sheet: &str, dst: Rect, opacity: f32) -> bool {
+        let Some(size) = self.sheets.get(sheet).map(|s| [s.image.size[0] as f32 / s.scale, s.image.size[1] as f32 / s.scale]) else { return false };
+        let tint = Color32::from_white_alpha((opacity.clamp(0.0, 1.0) * 255.0) as u8);
+        self.draw_tinted(p, sheet, 0.0, 0.0, size[0], size[1], dst, tint, false)
+    }
+
     /// One map screen enlarged, for the magnifier (false if there is no enlarged picture).
     pub fn magnifier_screen(&mut self, p: &egui::Painter, x: usize, y: usize, dst: Rect, mirror: bool) -> bool {
         self.draw(p, crate::art::MAGNIFIER, x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, 1.0, mirror)

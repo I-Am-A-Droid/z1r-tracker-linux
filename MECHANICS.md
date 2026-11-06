@@ -610,3 +610,20 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   12, bold, white on black, 2 px from the left and bottom.
 - Applied: the diamond is now placed exactly there, centre (23, 15.75) in the screen instead of the screen's middle
   (`RECORDER_DIAMOND_X`, `RECORDER_DIAMOND_Y` in src/view.rs).
+
+## Reference diagram with Starting Items and Extra Drops (asked for; checked 2026-11-06)
+In the original the Starting Items and Extra Drops panel comes with two reference areas
+(OverworldItemGridUI.makeExtrasPanelAndepRefresh; 2.1.0 `makeExtrasPanelAndepRefresh@496`, IL listing line 99987):
+- "Vanilla dungeon item reference / Don't click here", opacity 0.6, with "1Q" and "2Q" and the pictures
+  `first-quest-item-reference.png` / `second-quest-item-reference.png` (270 x 117, embedded in Z1R_WPF.exe; copied to
+  assets/reference and built into the program).
+- `Dungeon.MakeTriforceDecoderDiagram` (2.1.0 IL listing line 184750, same texts): opacity 0.8, "Reference diagram -
+  don't click here", "(Note: in Mixed Quest dungeons, 7 and 8 may be swapped)", "First Quest or Shapes dungeons" with
+  `DrawTriforceMapCore(haves, "12345678")`, "Second Quest dungeons" with the haves reordered
+  [h0, h2, h1, h4, h3, h5, h7, h6] and labels "13254687". DrawTriforceMapCore: points on a 4N x 2N grid
+  (p1 = (2N,0); p2..p4 = (N..3N, N); p5..p9 = (0..4N, 2N)), eight triangles [p1p2p3, p1p3p4, p2p5p6, p4p8p9, p2p3p7,
+  p2p6p7, p3p4p7, p4p7p8], edged DarkSlateBlue 2 px, filled orange with a black label when that triforce is had,
+  else black with a white label; labels bold, N/3 tall, in an N/2 box at (1.5,0.5) (2,0.5) (0.5,1.5) (3,1.5) (1.5,1)
+  (1,1.5) (2,1) (2.5,1.5) × N. N = 80 there; 52 here so both areas fit under the panel.
+- Clicks on both areas are swallowed (they don't close the panel).
+Applied: `View::draw_extras_references`, `View::draw_triforce_map`, `View::extras_reference_rects`.

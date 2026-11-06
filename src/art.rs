@@ -1264,11 +1264,27 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
         ("s_map_overworld_strip8.png", map.image(), map_scale as f32, true),
         ("ZTlogo64x64.png", logo().image(), 2.0, false),
     ];
+    // the original's vanilla dungeon item reference pictures (Graphics.firstQuestItemReferenceBMP / second…), copied
+    // into assets/reference from Z-Tracker 2.1.0 and built into the program
+    for (name, bytes) in [
+        (REFERENCE_1Q, &include_bytes!("../assets/reference/first-quest-item-reference.png")[..]),
+        (REFERENCE_2Q, &include_bytes!("../assets/reference/second-quest-item-reference.png")[..]),
+    ] {
+        if let Ok(img) = image::load_from_memory_with_format(bytes, image::ImageFormat::Png) {
+            let rgba = img.to_rgba8();
+            let size = [rgba.width() as usize, rgba.height() as usize];
+            sheets.push((name, ColorImage::from_rgba_unmultiplied(size, rgba.as_raw()), 1.0, true));
+        }
+    }
     if let Some((mag, scale)) = magnifier() {
         sheets.push((MAGNIFIER, mag.image(), scale as f32, true));
     }
     sheets
 }
+
+/// The vanilla dungeon item reference pictures (first and second quest), 270 x 117 each.
+pub const REFERENCE_1Q: &str = "first-quest-item-reference";
+pub const REFERENCE_2Q: &str = "second-quest-item-reference";
 
 /// The sheet of enlarged map screens for the magnifier.
 pub const MAGNIFIER: &str = "magnifier";

@@ -139,6 +139,11 @@ impl View {
                     self.choose(action, i, btn == Btn::Right);
                 }
                 _ if pop.bounds.contains(p) => self.popup = Some(pop),
+                // the Starting Items panel's reference areas ("don't click here") swallow clicks, as in the original
+                _ if matches!(pop.action, Action::Starting) && {
+                    let (a, b) = self.extras_reference_rects(pop.bounds);
+                    a.contains(p) || b.contains(p)
+                } => self.popup = Some(pop),
                 _ => {} // clicked outside: cancel
             }
             return;

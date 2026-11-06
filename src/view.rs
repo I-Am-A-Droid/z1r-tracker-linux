@@ -239,6 +239,9 @@ pub const CIRCLE_LABEL_SIZE: f32 = 12.0;
 pub const DONT_CARE_OPACITY: f32 = 0.55;
 /// The recorder destination diamond: a square this wide, turned 45 degrees (WPFUI.fs recorderingCanvas).
 pub const RECORDER_DIAMOND: f32 = 35.0;
+/// Size of one triangle step in the triforce reference diagram (the original uses TRIFORCE_SIZE = 80 in its own,
+/// larger window; scaled to fit beside the item reference here).
+pub const TRIFORCE_REF_SIZE: f32 = 52.0;
 /// Where the turned square's corner is placed in the screen (WPFUI/makeAll@1074-166 RoutingInfo: OMTW*i+23, 33*j-9).
 pub const RECORDER_DIAMOND_X: f32 = 23.0;
 pub const RECORDER_DIAMOND_Y: f32 = -9.0;
@@ -1314,6 +1317,71 @@ impl View {
     }
 
     // ------------------------------------------------------------------ pop-ups
+    /// Shown with the Starting Items and Extra Drops panel, as in the original (OverworldItemGridUI
+    /// makeExtrasPanelAndepRefresh): the vanilla dungeon item reference (faded, opacity 0.6) and the triforce
+    /// "Reference diagram" (Dungeon.MakeTriforceDecoderDiagram, opacity 0.8), below the panel.
+    /// Where the two reference areas go, below the Starting Items panel: (item reference, triforce diagram).
+    pub fn extras_reference_rects(&self, panel: Rect) -> (Rect, Rect) {
+        let top = panel.max.y + 8.0;
+        let left = rect(panel.min.x.max(2.0), top, 318.0, 296.0);
+        let n = TRIFORCE_REF_SIZE;
+        let right = rect((left.max.x + 8.0).min(self.size().x - n * 4.0 - 30.0), top, n * 4.0 + 26.0, n * 4.0 + 150.0);
+        (left, right)
+    }
+
+    fn draw_extras_references(&mut self, p: &Painter, panel: Rect) {
+        let (left, right) = self.extras_reference_rects(panel);
+        // left: the vanilla dungeon item reference
+        self.fill(p, left, Color32::BLACK);
+        self.stroke(p, left, 4.0, Color32::GRAY);
+        let faded = Color32::from_rgba_unmultiplied(255, 165, 0, 153);
+        self.text(p, left.min.x + 10.0, left.min.y + 8.0, 12.0, faded, "Vanilla dungeon item reference");
+        self.text(p, left.min.x + 10.0, left.min.y + 24.0, 12.0, faded, "Don't click here");
+        for (i, (q, sheet)) in [("1Q", crate::art::REFERENCE_1Q), ("2Q", crate::art::REFERENCE_2Q)].into_iter().enumerate() {
+            let y = left.min.y + 46.0 + i as f32 * 123.0;
+            self.text(p, left.min.x + 8.0, y + 46.0, 18.0, faded, q);
+            let dst = self.r(rect(left.min.x + 40.0, y, 270.0, 117.0));
+            self.assets.sheet_faded(p, sheet, dst, 0.6);
+        }
+        // right: the triforce reference diagram
+        let n = TRIFORCE_REF_SIZE;
+        self.fill(p, right, Color32::BLACK);
+        self.stroke(p, right, 4.0, Color32::GRAY);
+        let orange = Color32::from_rgba_unmultiplied(255, 165, 0, 204);
+        let line = |s: &mut Self, y: f32, t: &str| s.text_c(p, rect(right.min.x, y, right.width(), 16.0), 12.0, orange, t);
+        line(self, right.min.y + 6.0, "Reference diagram - don't click here");
+        line(self, right.min.y + 24.0, "(Note: in Mixed Quest dungeons,");
+        line(self, right.min.y + 40.0, "7 and 8 may be swapped)");
+        let haves: [bool; 8] = std::array::from_fn(|i| self.m.dungeons[i].triforce || (self.m.hidden_dungeon_numbers && self.m.starting_triforces[i]));
+        line(self, right.min.y + 66.0, "First Quest or Shapes dungeons");
+        self.draw_triforce_map(p, Pos2::new(right.min.x + 13.0, right.min.y + 86.0), haves, "12345678");
+        line(self, right.min.y + 92.0 + n * 2.0, "Second Quest dungeons");
+        let h = haves;
+        let second = [h[0], h[2], h[1], h[4], h[3], h[5], h[7], h[6]];
+        self.draw_triforce_map(p, Pos2::new(right.min.x + 13.0, right.min.y + 112.0 + n * 2.0), second, "13254687");
+    }
+
+    /// Dungeon.DrawTriforceMapCore: eight triangles on a 4N x 2N grid, edged dark slate blue, filled orange (with a
+    /// black number) when had, else black (white number).
+    fn draw_triforce_map(&mut self, p: &Painter, at: Pos2, haves: [bool; 8], labels: &str) {
+        let n = TRIFORCE_REF_SIZE;
+        let pt = |x: f32, y: f32| at + Vec2::new(x * n, y * n);
+        let (p1, p2, p3, p4) = (pt(2.0, 0.0), pt(1.0, 1.0), pt(2.0, 1.0), pt(3.0, 1.0));
+        let (p5, p6, p7, p8, p9) = (pt(0.0, 2.0), pt(1.0, 2.0), pt(2.0, 2.0), pt(3.0, 2.0), pt(4.0, 2.0));
+        let tris = [[p1, p2, p3], [p1, p3, p4], [p2, p5, p6], [p4, p8, p9], [p2, p3, p7], [p2, p6, p7], [p3, p4, p7], [p4, p7, p8]];
+        let label_at = [(1.5, 0.5), (2.0, 0.5), (0.5, 1.5), (3.0, 1.5), (1.5, 1.0), (1.0, 1.5), (2.0, 1.0), (2.5, 1.5)];
+        let slate = Color32::from_rgb(72, 61, 139);
+        for (i, t) in tris.iter().enumerate() {
+            let pts: Vec<Pos2> = t.iter().map(|q| self.r(Rect::from_min_size(*q, Vec2::ZERO)).min).collect();
+            let fill = if haves[i] { Color32::from_rgb(255, 165, 0) } else { Color32::BLACK };
+            p.add(egui::Shape::convex_polygon(pts, fill, Stroke::new(2.0, slate)));
+            let (lx, ly) = label_at[i];
+            let ch = labels.chars().nth(i).unwrap_or('?').to_string();
+            let r = Rect::from_min_size(at + Vec2::new(lx * n, ly * n), Vec2::splat(n / 2.0));
+            self.text_c(p, r, n / 3.0, if haves[i] { Color32::BLACK } else { Color32::WHITE }, &ch);
+        }
+    }
+
     fn draw_popup(&mut self, p: &Painter) {
         let Some(mut pop) = self.popup.take() else { return };
         pop.layout(self.size());
@@ -1368,6 +1436,9 @@ impl View {
             if pop.hover == Some(i) {
                 self.stroke(p, r, 2.0, Color32::YELLOW);
             }
+        }
+        if matches!(pop.action, Action::Starting) {
+            self.draw_extras_references(p, pop.bounds);
         }
         let foot = pop.hover.and_then(|h| pop.choices.get(h)).map(|c| c.label.clone()).unwrap_or_else(|| "Click outside to cancel".into());
         self.text(p, pop.bounds.min.x + PAD, pop.bounds.max.y - FOOT_H + 3.0, 12.0, Color32::WHITE, &foot.replace('\n', " "));

@@ -514,3 +514,13 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
 The first personal marker (mark 36, saved as the original's `PersonalPref1`) now says "Start" on the map and in the
 marking pop-up instead of "P1" (`data::START_MARK_TEXT`); words longer than three letters use a 10-pt font so they
 fit the 32 x 22 badge. Saves are unchanged, so the original still reads it as its Personal Preference 1 marker.
+
+## Alphabetical hint zones (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "PersonalPref": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is from the .NET IL.
+- `UIComponents::activatePopup@687-41` (IL listing line 83897) builds the hint-zone list; when
+  `AlphabetizeHintZones` is on it keeps entry 0 ("(Unknown)") first and appends the rest sorted by name
+  (`Array.sortBy` on the name, ordinal string order). Options menu text: "When checked, the hint zone dropdown
+  (where you mark which zone a dungeon/sword is in) shows zones in alphabetical order instead of geographic order."
+- Applied: option "Alphabetize hint zone list" (same setting name); clicking a hint in the Hints pop-up then steps
+  through the zones in that order (left click forward, right click back) (`data::hint_zone_order`).

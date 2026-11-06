@@ -822,6 +822,14 @@ mod tests {
     }
 
     #[test]
+    fn hint_zones_can_be_offered_alphabetically() {
+        use crate::data::{hint_zone_order, HINT_ZONE_NAMES};
+        assert_eq!(hint_zone_order(false), (0..11).collect::<Vec<_>>());
+        let names: Vec<&str> = hint_zone_order(true).iter().map(|&z| HINT_ZONE_NAMES[z]).collect();
+        assert_eq!(names, ["(Unknown)", "Close to Start", "Coast", "Dead Woods", "Death Mountain", "Desert", "Forest", "Grave", "Lake", "Lost Hills", "River"]);
+    }
+
+    #[test]
     fn room_descriptions_match_room_types() {
         use crate::data::{ROOM_TYPES, ROOM_TYPE_DESCRIPTIONS};
         for (kind, desc) in ROOM_TYPES.iter().zip(ROOM_TYPE_DESCRIPTIONS.iter()) {

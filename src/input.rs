@@ -282,7 +282,10 @@ impl View {
             }
             Action::Hints => {
                 if i < 11 {
-                    self.m.location_hints[i] = (self.m.location_hints[i] + if right { 10 } else { 1 }) % 11;
+                    let order = hint_zone_order(self.settings.get("AlphabetizeHintZones"));
+                    let pos = order.iter().position(|&z| z == self.m.location_hints[i]).unwrap_or(0);
+                    let n = order.len();
+                    self.m.location_hints[i] = order[(pos + if right { n - 1 } else { 1 }) % n];
                 } else {
                     let k = HINT_FLAG_KEYS[i - 11];
                     let v = !self.m.hint_flags[k];

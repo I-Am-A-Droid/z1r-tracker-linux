@@ -165,6 +165,15 @@ pub fn at(g: &Grid, x: usize, y: usize) -> bool {
 
 /// Hint zones, in the order the save file numbers them.
 pub const HINT_ZONE_NAMES: [&str; 11] = ["(Unknown)", "Death Mountain", "Lake", "Lost Hills", "River", "Grave", "Desert", "Coast", "Dead Woods", "Close to Start", "Forest"];
+/// The order zones are offered in (UIComponents::activatePopup@687-41, IL listing line 83897): "(Unknown)" first,
+/// then the zones in geographic order, or, with "AlphabetizeHintZones", sorted by name (ordinal string order).
+pub fn hint_zone_order(alphabetical: bool) -> Vec<usize> {
+    let mut rest: Vec<usize> = (1..HINT_ZONE_NAMES.len()).collect();
+    if alphabetical {
+        rest.sort_by_key(|&z| HINT_ZONE_NAMES[z]);
+    }
+    std::iter::once(0).chain(rest).collect()
+}
 pub const HINT_ZONE_SHORT: [&str; 11] = ["UN", "DM", "LK", "LH", "RI", "GR", "DE", "CO", "DW", "ST", "FO"];
 const HINT_ZONE_LETTERS: &str = "?MLHRGDCWSF";
 pub fn zone_at(x: usize, y: usize) -> usize {

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 pub use crate::platform::{config_dir, save_dir};
 
-pub const BOOL_OPTIONS: [(&str, &str, bool); 18] = [
+pub const BOOL_OPTIONS: [(&str, &str, bool); 19] = [
     ("WideLayoutWhenRoomy", "Put the dungeons and timeline beside the map when the window is wide", true),
     ("Visual_CoastItem", "Remind me to get the coast item once I have the ladder", true),
     ("HighlightNearby", "Highlight nearby unmarked screens", true),
@@ -29,6 +29,7 @@ pub const BOOL_OPTIONS: [(&str, &str, bool); 18] = [
     ("DisplaySeedAndFlags", "Show seed and flags", true),
     ("AllowItemIconOnNonShopTile", "Right-click a non-shop tile to add an item icon", false),
     ("GiveDungeonTrackerSunglasses", "Dungeon 'sunglasses' (darken the bright dungeon map a little)", false),
+    ("AlphabetizeHintZones", "Alphabetize hint zone list (clicking a hint goes through zones A-Z)", false),
 ];
 
 pub struct Settings {

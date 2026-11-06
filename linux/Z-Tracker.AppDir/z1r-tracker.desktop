@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Z-Tracker
+GenericName=Z-Tracker for Zelda 1 Randomizer
+Comment=Launch Z-Tracker
+Exec=z1r-tracker
+Icon=z1r-tracker
+Categories=Game;
+Terminal=false
+StartupWMClass=z1r-tracker
+X-AppImage-Version=2.1.0

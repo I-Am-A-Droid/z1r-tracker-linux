@@ -449,3 +449,7 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
 - Applied: marked screens keep the darkening; "don't care" screens keep the same darkening (so both look equally
   dark, as asked) and now also show a faint X across the screen, standing in for the original's X tile picture
   (`view::dont_care_overlay`).
+
+## No X on "don't care" screens (changed on request)
+The faint X on "don't care" map screens is removed: they are only darkened (by the same 0.55 as marked screens). The
+"don't care" choice in the pop-up and the key under the map still show the X marker picture.

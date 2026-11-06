@@ -1032,9 +1032,6 @@ mod tests {
         assert!(tile_is_shaded(DARK_X, false)); // don't care
         assert!(tile_is_shaded(0, false)); // level 1
         assert!(tile_is_shaded(23, false)); // a shop
-        // "don't care" gets its X picture at 0.55 instead of the plain darkening
-        assert!(crate::view::dont_care_overlay(DARK_X));
-        assert!(!crate::view::dont_care_overlay(23));
     }
 
     #[test]

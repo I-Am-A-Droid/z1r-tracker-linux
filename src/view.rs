@@ -238,16 +238,10 @@ pub const DONT_CARE_OPACITY: f32 = 0.55;
 
 /// Whether a map screen is shown darkened, as in the original (`WPFUI::redrawGridSpot$cont@602`, token 0x060003b8,
 /// RVA 0xe074): a screen with a mark gets `drawDarkening` (black at opacity 0.55) under its marker, and a "don't
-/// care" screen the same darkness from its own X picture laid over it at opacity 0.55 (see `dont_care_overlay`).
-/// Screens that never hold anything are darkened too.
+/// care" screen the same darkness (the original lays an X picture over it at opacity 0.55; here, on request, it is
+/// just darkened, without the X). Screens that never hold anything are darkened too.
 pub fn tile_is_shaded(mark: i32, always_empty: bool) -> bool {
     mark >= 0 || always_empty
-}
-
-/// "Don't care" screens also show a faint X (the original's X picture over the screen); the darkening is the same
-/// as for marked screens, so both look equally dark (asked for).
-pub fn dont_care_overlay(mark: i32) -> bool {
-    mark == DARK_X
 }
 const PANEL: Color32 = Color32::from_rgb(20, 20, 28);
 
@@ -636,7 +630,6 @@ impl View {
                 let x = self.data_x(col);
                 let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
                 let mark = self.m.mark[x][y];
-                let overlay = dont_care_overlay(mark);
                 let shade = if tile_is_shaded(mark, self.m.always_empty(x, y)) { 1.0 - DONT_CARE_OPACITY } else { 1.0 };
                 // the blank map shows the person's own overworld picture, if one is chosen (the original's
                 // overworldMapBMPs uses alternativeOverworldMapFilename only for quest 4)
@@ -650,12 +643,6 @@ impl View {
                     let v = |c: f32| (c * shade) as u8;
                     self.fill(p, r, Color32::from_rgb(v(40.0), v(90.0), v(40.0)));
                     self.stroke(p, r, 1.0, Color32::BLACK);
-                }
-                if overlay {
-                    let rr = self.r(r.shrink2(Vec2::new(14.0, 7.0)));
-                    let stroke = Stroke::new(2.0, Color32::from_white_alpha(46));
-                    p.line_segment([rr.left_top(), rr.right_bottom()], stroke);
-                    p.line_segment([rr.right_top(), rr.left_bottom()], stroke);
                 }
                 if mark >= 0 && mark != DARK_X {
                     self.draw_mark(p, r, mark, self.m.extra[x][y]);

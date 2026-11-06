@@ -499,6 +499,26 @@
       "group": "map",
       "value": "rgb(220,220,220)",
       "source": "UIComponents.fs RecorderEllipseColor"
+    },
+    {
+      "name": "shop locator outline final width",
+      "group": "map",
+      "value": 4,
+      "unit": "px",
+      "source": "Graphics.fs TileHighlightRectangle.MakeGreenWithBriefAnimation (12 -> 4)"
+    },
+    {
+      "name": "shop locator animation",
+      "group": "map",
+      "value": 0.5,
+      "unit": "s",
+      "source": "Graphics.fs TileHighlightRectangle.MakeGreenWithBriefAnimation"
+    },
+    {
+      "name": "locator green (no animation)",
+      "group": "map",
+      "value": "rgb(76,204,76)",
+      "source": "Graphics.fs green = desaturateColor(Lime, 0.50)"
     }
   ]
 }

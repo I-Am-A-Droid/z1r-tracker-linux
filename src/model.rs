@@ -294,13 +294,12 @@ impl Tracker {
         self.starting[key]
     }
 
-    /// Whether the map screen sells shop item `item` (0-7): a shop whose own item it is, or whose second item it is;
-    /// with "AllowItemIconOnNonShopTile", also any screen showing it as its item icon.
-    pub fn tile_sells(&self, x: usize, y: usize, item: i32, item_icons_anywhere: bool) -> bool {
+    /// Whether the map screen is a shop selling shop item `item` (0-7), as its own item or its second one
+    /// (WPFUI.fs showShopLocatorInstanceFunc: IsThreeItemShop && (cur = item || extra data = item)).
+    pub fn tile_sells(&self, x: usize, y: usize, item: i32) -> bool {
         let mark = self.mark[x][y];
-        let shop = (crate::data::SHOP_FIRST..=crate::data::SHOP_LAST).contains(&mark);
         let extra = self.extra[x][y];
-        (shop && mark - crate::data::SHOP_FIRST == item) || ((shop || item_icons_anywhere) && (1..=8).contains(&extra) && extra - 1 == item)
+        (crate::data::SHOP_FIRST..=crate::data::SHOP_LAST).contains(&mark) && (mark - crate::data::SHOP_FIRST == item || ((1..=8).contains(&extra) && extra - 1 == item))
     }
 
     /// The original's `ShouldHide` (OverworldMapTileCustomization::ShouldHide, token 0x06001ab3, RVA 0x5975c): a kind of
@@ -900,13 +899,12 @@ mod tests {
         t.mark[1][1] = SHOP_FIRST + 3; // candle shop
         t.mark[2][2] = SHOP_FIRST + 7; // shield shop ...
         t.extra[2][2] = 2; // ... also selling bombs
-        t.mark[3][3] = 5; // a dungeon with an item icon (only counts with AllowItemIconOnNonShopTile)
+        t.mark[3][3] = 5; // a dungeon with an item icon
         t.extra[3][3] = 2;
-        assert!(t.tile_sells(1, 1, 3, false));
-        assert!(t.tile_sells(2, 2, 1, false));
-        assert!(!t.tile_sells(2, 2, 3, false));
-        assert!(!t.tile_sells(3, 3, 1, false));
-        assert!(t.tile_sells(3, 3, 1, true));
+        assert!(t.tile_sells(1, 1, 3));
+        assert!(t.tile_sells(2, 2, 1));
+        assert!(!t.tile_sells(2, 2, 3));
+        assert!(!t.tile_sells(3, 3, 1)); // only shops count, as in the original
     }
 
     #[test]

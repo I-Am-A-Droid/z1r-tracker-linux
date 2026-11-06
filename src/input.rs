@@ -1187,6 +1187,20 @@ mod tests {
     }
 
     #[test]
+    fn shop_locator_items_follow_the_original() {
+        use crate::view::{shop_item_for_blocker, shop_item_for_progress};
+        assert_eq!(shop_item_for_progress("PlayerHasWoodArrow", false), Some(0));
+        assert_eq!(shop_item_for_progress("PlayerHasBoomBook", false), Some(2));
+        assert_eq!(shop_item_for_progress("PlayerHasBlueCandle", false), Some(3));
+        assert_eq!(shop_item_for_progress("PlayerHasBlueCandle", true), None); // has a candle: no shop locating
+        assert_eq!(shop_item_for_progress("PlayerHasWoodSword", false), None);
+        assert_eq!(shop_item_for_blocker("Blocker_Bait"), Some(5));
+        assert_eq!(shop_item_for_blocker("Blocker_Maybe_Key"), Some(6));
+        assert_eq!(shop_item_for_blocker("Blocker_Bow_And_Arrow"), Some(0));
+        assert_eq!(shop_item_for_blocker("Blocker_Recorder"), None);
+    }
+
+    #[test]
     fn marked_screens_are_darkened_like_dont_care() {
         use crate::data::DARK_X;
         use crate::view::tile_is_shaded;

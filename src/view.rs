@@ -193,6 +193,8 @@ pub struct View {
     /// drawing offset for the part being drawn (non-zero for the lower part in the wide arrangement)
     shift: Vec2,
     pub wide: bool,
+    /// the shop item being located on the map, and when it started (for the original's brief animation)
+    pub locating: Option<(i32, f64)>,
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
@@ -214,17 +216,35 @@ pub fn centered_in(outer: Rect, w: f32, h: f32) -> Rect {
 pub const ORANGE: Color32 = Color32::from_rgb(255, 165, 0);
 pub const LIGHT_GREEN: Color32 = Color32::from_rgb(144, 238, 144);
 pub const LIME: Color32 = Color32::from_rgb(50, 205, 50);
-/// The bold green outline on map screens whose shop sells the item pointed at in the top section.
-pub const SHOP_HIGHLIGHT: Color32 = Color32::from_rgb(0, 255, 0);
+/// The shop locator outline (Graphics.fs TileHighlightRectangle): ends 4 px lime; animated from 12 px cyan over
+/// 0.5 s; without animation "green" = desaturateColor(Lime, 0.5) = rgb(76,204,76).
 pub const SHOP_HIGHLIGHT_W: f32 = 4.0;
+pub const SHOP_HIGHLIGHT_SECS: f64 = 0.5;
+pub const SHOP_HIGHLIGHT_PLAIN: Color32 = Color32::from_rgb(76, 204, 76);
 
-/// Which shop item (0-7, see SHOP_ITEM_NAMES) a top-section toggle stands for: wood arrow, bombs, blue candle, blue ring.
-pub fn shop_item_for_progress(key: &str) -> Option<i32> {
+/// Which shop item (0-7, see SHOP_ITEM_NAMES) a top-section toggle locates (OverworldItemGridUI.fs MouseEnter
+/// handlers): wood arrow, bombs, boomerang-or-book (the book), blue ring; the blue candle only while no candle is
+/// had (CandleLevel = 0; otherwise the original shows burnable bushes instead).
+pub fn shop_item_for_progress(key: &str, have_candle: bool) -> Option<i32> {
     match key {
         "PlayerHasWoodArrow" => Some(0),
         "PlayerHasBombs" => Some(1),
-        "PlayerHasBlueCandle" => Some(3),
+        "PlayerHasBoomBook" => Some(2),
+        "PlayerHasBlueCandle" if !have_candle => Some(3),
         "PlayerHasBlueRing" => Some(4),
+        _ => None,
+    }
+}
+
+/// Which shop item a dungeon blocker locates (UIComponents.fs blocker MouseEnter): meat, keys, bombs, bow and arrow
+/// (the "maybe" kinds too).
+pub fn shop_item_for_blocker(kind: &str) -> Option<i32> {
+    let k = kind.trim_start_matches("Blocker_").trim_start_matches("Maybe_");
+    match k {
+        "Bait" => Some(5),
+        "Key" => Some(6),
+        "Bomb" => Some(1),
+        "Bow_And_Arrow" => Some(0),
         _ => None,
     }
 }
@@ -283,6 +303,7 @@ impl View {
         View {
             m, assets, settings, hotkeys, hits: vec![], hover: Target::None, mouse: Pos2::ZERO, popup: None,
             toast: String::new(), toast_until: 0.0, disk_until: 0.0, ladder_reminder_at: 0.0, now: 0.0, paused: false, commands: vec![], load_request: None, origin: Vec2::ZERO, shift: Vec2::ZERO, wide: false,
+            locating: None,
         }
     }
 
@@ -385,6 +406,21 @@ impl View {
         self.origin = origin;
         self.now = ui.ctx().input(|i| i.time);
         self.check_coast_reminder();
+        // which shop item (if any) the mouse is locating; restart the brief animation when it changes
+        let have_candle = self.m.player_has_item(9) || self.m.prog("PlayerHasBlueCandle");
+        let item = match self.hover {
+            Target::Progress(key) => shop_item_for_progress(key, have_candle),
+            Target::Blocker(d, s) => self.m.blockers.get(d).and_then(|b| b.get(s)).and_then(|b| BLOCKER_KINDS.get(b.kind)).and_then(|k| shop_item_for_blocker(k)),
+            _ => None,
+        };
+        self.locating = match (item, self.locating) {
+            (Some(i), Some((j, since))) if i == j => Some((j, since)),
+            (Some(i), _) => Some((i, self.now)),
+            (None, _) => None,
+        };
+        if self.locating.is_some_and(|(_, since)| self.now - since < SHOP_HIGHLIGHT_SECS) {
+            ui.ctx().request_repaint();
+        }
         self.hits.clear();
         let p = ui.painter().clone();
         let size = self.size();
@@ -681,7 +717,8 @@ impl View {
                 }
                 // a hidden kind of tile looks like "don't care": darkened, without its marker
                 let settings = &self.settings;
-                let hidden = self.m.tile_hidden(x, y, &|k| settings.get(k));
+                let located = self.locating.is_some_and(|(item, _)| self.m.tile_sells(x, y, item));
+                let hidden = self.m.tile_hidden(x, y, &|k| settings.get(k)) && !located;
                 if mark >= 0 && mark != DARK_X && !hidden {
                     let shop_items = self.m.shop_items_shown(x, y, &|k| settings.get(k));
                     self.draw_mark(p, r, mark, self.m.extra[x][y], shop_items);
@@ -726,20 +763,34 @@ impl View {
                 }
             }
         }
-        // pointing at the wood arrow, bombs, blue candle or blue ring in the top section: every map screen whose
-        // shop sells that item is outlined in bold green (asked for; the original also shows "locations of shops
-        // containing each item" when these are hovered)
-        if let Target::Progress(key) = self.hover {
-            if let Some(item) = shop_item_for_progress(key) {
-                for col in 0..16 {
-                    for y in 0..8 {
-                        let x = self.data_x(col);
-                        if self.m.tile_sells(x, y, item, self.settings.get("AllowItemIconOnNonShopTile")) {
-                            let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
-                            self.stroke(p, r.shrink(SHOP_HIGHLIGHT_W / 2.0), SHOP_HIGHLIGHT_W, SHOP_HIGHLIGHT);
-                        }
+        // the original's shop locator (WPFUI.fs showShopLocatorInstanceFunc): pointing at the wood arrow, bombs,
+        // boomerang-or-book, blue candle (while no candle is had) or blue ring in the top section, or at a dungeon
+        // blocker needing meat / keys / bombs / bow and arrow, outlines every shop selling it
+        // (TileHighlightRectangle.MakeGreenWithBriefAnimation: 12 -> 4 px and cyan -> lime over 0.5 s, or plain
+        // green 4 px without "AnimateShopHighlights"); if none is marked, says so
+        if let Some((item, since)) = self.locating {
+            let t = ((self.now - since) / SHOP_HIGHLIGHT_SECS).clamp(0.0, 1.0) as f32;
+            let (w, c) = if self.settings.get("AnimateShopHighlights") {
+                let lerp = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t).round() as u8;
+                (12.0 + (SHOP_HIGHLIGHT_W - 12.0) * t, Color32::from_rgb(0, lerp(255, 255), lerp(255, 0)))
+            } else {
+                (SHOP_HIGHLIGHT_W, SHOP_HIGHLIGHT_PLAIN)
+            };
+            let mut any = false;
+            for col in 0..16 {
+                for y in 0..8 {
+                    let x = self.data_x(col);
+                    if self.m.tile_sells(x, y, item) {
+                        any = true;
+                        let r = rect(col as f32 * TILE_W, MAP_Y + y as f32 * TILE_H, TILE_W, TILE_H);
+                        self.stroke(p, r.shrink(w.min(16.0) / 2.0), w, c);
                     }
                 }
+            }
+            if !any {
+                let r = rect(16.0 * TILE_W - 170.0, MAP_Y + 4.0, 166.0, 20.0);
+                self.fill(p, r, Color32::from_black_alpha(200));
+                self.text_c(p, r, 12.0, Color32::YELLOW, &format!("no {} shop marked yet", SHOP_ITEM_NAMES[item as usize].to_lowercase()));
             }
         }
         if let Target::MapTile(hx, hy) = self.hover {

@@ -665,3 +665,22 @@ an item icon) is outlined in bold green (4 px, rgb(0,255,0)) (`view::shop_item_f
 The original's Mouse Hover Explainer describes the same areas as "Show locations of shops containing each item"
 (UIComponents.fs MakeMouseHoverExplainer, 1.3.1 source); there it uses its own locator highlight, here the outline
 asked for.
+
+## The original's shop locator (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "shops containing": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the source beside 1.2.3
+(1.3.1) and its texts in 2.1.0.
+- WPFUI.fs `showShopLocatorInstanceFunc item`: for every screen whose mark is a shop (IsThreeItemShop) and whose
+  mark is the item or whose extra data (second item) is it: `owLocatorTileRectangles.MakeGreenWithBriefAnimation()`,
+  and the screen's hidden marker is shown for the moment (temporarilyDisplayHiddenOverworldTileMarks). None found:
+  `showLocatorNoneFound` (shows the "ghost buster" icon).
+- Graphics.fs TileHighlightRectangle: 48 x 33, MakeGreen = desaturateColor(Lime, 0.5) (rgb 76,204,76) at 4 px;
+  MakeGreenWithBriefAnimation with `AnimateShopHighlights`: thickness 12 → 4 and colour Cyan → Lime over 0.5 s;
+  MakeBoldGreen is the same green at 6 px.
+- Who locates what (OverworldItemGridUI.fs MouseEnter, UIComponents.fs blockers): wood arrow box → arrow; bombs → bomb;
+  boomerang-or-book → book; blue candle → candle only while CandleLevel = 0 (else burnable bushes); blue ring → ring;
+  blockers bait → meat, key → key, bomb → bomb, bow and arrow → arrow.
+- Applied: the bold-green outline asked for now follows these rules (only shops; book, blockers and the candle rule
+  added; hidden shop markers shown while located; the 0.5 s 12 → 4 px cyan → lime animation, setting
+  "AnimateShopHighlights", default on; "no … shop marked yet" when none). `View::locating`, `shop_item_for_progress`,
+  `shop_item_for_blocker`, `Tracker::tile_sells`.

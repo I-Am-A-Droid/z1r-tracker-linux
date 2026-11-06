@@ -698,3 +698,18 @@ screens outside their hinted zone (0.7); otherwise "no … cave marked yet" (`Lo
 ## The "boomerang or book" box shows as the book (asked for)
 The top section's PlayerHasBoomBook box now uses the book picture and is named "Book" (hover text, timeline); the
 save name stays PlayerHasBoomBook and it still locates book shops.
+
+## Spot Summary (asked for; from the source beside 1.2.3, also in 2.1.0)
+- Button "Spot Summary" (OverworldItemGridUI.fs; Layout.fs at 12.8·OMTW, 90; only for a standard overworld). While
+  hovered, `OverworldMapTileCustomization.MakeRemainderSummaryDisplay` is shown at (50, 3) (Layout.fs AddSpotSummary);
+  2.1.0 keeps it (WPFUI spotSummaryCanvas, IL listing line 32086). Clicking opens a separate window there (not rebuilt).
+- Contents (icons with a 3-px black border; OPA 0.4, OPA2 0.75): "Unique Locations": marks 0-8, then 9-15, 30, 31,
+  each at 0.4 once it can't be used again; secrets: the actual counts (first-quest overworld 3 large / 7 medium /
+  4 small, otherwise 1 / 7 / 6), with the person's large/medium/small/unknown marks (at most 14 in that order) put in
+  their own bins first, overflow into the other bin with more holes, unknowns into the bin with most holes; actual
+  secrets dim to 0.4 when matched by a mark and 0.75 when matched by an unknown; "Non-Unique Locations": door repair,
+  money game, hint shop, Take Any, potion shop — still-open ones on the left, used ones dimmed on the right;
+  "Shop summary (only first item shown)": the marked shops sorted, then greyed hint-shop icons up to 12 (first-quest
+  overworld) or 15 shops.
+- Applied: `View::draw_spot_summary`, `Tracker::secret_summary` (tested), button beside "Triforces". The original's
+  ↓/↑ arrows in the secret headings are written as words (the font has no arrows).

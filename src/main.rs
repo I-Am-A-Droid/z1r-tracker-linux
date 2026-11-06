@@ -500,6 +500,8 @@ impl eframe::App for TrackerApp {
                     self.view.hover = view::Target::Progress(key);
                 } else if k == "WhiteSword" {
                     self.view.hover = view::Target::Box(model::BoxId::WhiteSword);
+                } else if k == "SpotSummary" {
+                    self.view.hover = view::Target::Button("SpotSummary");
                 }
             }
             // Z1R_SCREENSHOT_OPEN=extras opens the Starting Items and Extra Drops panel

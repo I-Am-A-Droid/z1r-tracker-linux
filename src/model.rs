@@ -367,6 +367,89 @@ impl Tracker {
     pub fn is_second_quest(&self) -> bool {
         self.quest == 1 || self.quest == 3
     }
+    pub fn first_quest_overworld(&self) -> bool {
+        self.first_quest_counts()
+    }
+
+    /// The Spot Summary's two secret rows (OverworldMapTileCustomization.MakeRemainderSummaryDisplay): the actual
+    /// secrets of this overworld (first quest 3 large, 7 medium, 4 small; second quest 1, 7, 6) and, under them, the
+    /// person's secret marks (at most 14, taken large, medium, small, unknown) fitted into those bins. Each entry is
+    /// (mark, opacity): 0.4 for a secret already matched by a mark, 0.75 for one matched by an unknown-secret mark;
+    /// None in the marks row is an empty slot.
+    pub fn secret_summary(&self) -> (Vec<(i32, f32)>, Vec<Option<(i32, f32)>>) {
+        const LARGE: i32 = 25;
+        const MEDIUM: i32 = 26;
+        const SMALL: i32 = 27;
+        const UNKNOWN: i32 = 24;
+        const OPA: f32 = 0.4;
+        const OPA2: f32 = 0.75;
+        let (large, medium, small) = if self.first_quest_counts() { (3usize, 7usize, 4usize) } else { (1, 7, 6) };
+        let mut total = 0;
+        let mut take = |n: usize| {
+            let k = n.min(14 - total);
+            total += k;
+            k
+        };
+        let mut ul = take(self.uses_of_mark(LARGE));
+        let mut um = take(self.uses_of_mark(MEDIUM));
+        let mut us = take(self.uses_of_mark(SMALL));
+        let mut uu = take(self.uses_of_mark(UNKNOWN));
+        let (mut li, mut mi, mut si): (Vec<(i32, f32)>, Vec<(i32, f32)>, Vec<(i32, f32)>) = (vec![], vec![], vec![]);
+        while ul > 0 && li.len() < large {
+            li.push((LARGE, OPA));
+            ul -= 1;
+        }
+        while um > 0 && mi.len() < medium {
+            mi.push((MEDIUM, OPA));
+            um -= 1;
+        }
+        while us > 0 && si.len() < small {
+            si.push((SMALL, OPA));
+            us -= 1;
+        }
+        let holes = |cap: usize, v: &Vec<(i32, f32)>| cap as i64 - v.len() as i64;
+        while ul > 0 {
+            if holes(medium, &mi) > holes(small, &si) { mi.insert(0, (LARGE, OPA)) } else { si.insert(0, (LARGE, OPA)) }
+            ul -= 1;
+        }
+        while um > 0 {
+            if holes(large, &li) > holes(small, &si) { li.push((MEDIUM, OPA)) } else { si.insert(0, (MEDIUM, OPA)) }
+            um -= 1;
+        }
+        while us > 0 {
+            if holes(large, &li) > holes(medium, &mi) { li.push((SMALL, OPA)) } else { mi.push((SMALL, OPA)) }
+            us -= 1;
+        }
+        let (mut lu, mut mu, mut su) = (0usize, 0usize, 0usize);
+        while uu > 0 {
+            let (lh, mh, sh) = (holes(large, &li), holes(medium, &mi), holes(small, &si));
+            if lh >= mh && lh >= sh {
+                li.push((UNKNOWN, 1.0));
+                lu += 1;
+            } else if mh >= lh && mh >= sh {
+                mi.push((UNKNOWN, 1.0));
+                mu += 1;
+            } else {
+                si.push((UNKNOWN, 1.0));
+                su += 1;
+            }
+            uu -= 1;
+        }
+        let mut actual = vec![];
+        for (mark, cap, unknown, user) in [(LARGE, large, lu, li.len()), (MEDIUM, medium, mu, mi.len()), (SMALL, small, su, si.len())] {
+            for i in 1..=cap {
+                let opa = if i + unknown > cap { OPA2 } else if i + user > cap { OPA } else { 1.0 };
+                actual.push((mark, opa));
+            }
+        }
+        let mut marks = vec![];
+        for (cap, v) in [(large, li), (medium, mi), (small, si)] {
+            marks.extend(std::iter::repeat_n(None, cap.saturating_sub(v.len())));
+            marks.extend(v.into_iter().map(Some));
+        }
+        (actual, marks)
+    }
+
     pub fn max_uses(&self, mark: i32) -> usize {
         let t = &TILES[mark as usize];
         if self.first_quest_counts() { t.max_1q } else { t.max_2q }
@@ -891,6 +974,31 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn spot_summary_secrets_follow_the_original() {
+        let mut t = Tracker::new(); // first quest: 3 large, 7 medium, 4 small
+        let (actual, marks) = t.secret_summary();
+        assert_eq!(actual.len(), 14);
+        assert!(actual.iter().all(|&(_, o)| o == 1.0));
+        assert!(marks.iter().all(|m| m.is_none()));
+        // two large marks: the last two large secrets dim to 0.4, the marks row shows them in the large bin
+        t.mark[0][3] = 25;
+        t.mark[1][3] = 25;
+        // one unknown-secret mark: goes to the bin with the most holes (medium: 7), dims a medium to 0.75
+        t.mark[2][3] = 24;
+        let (actual, marks) = t.secret_summary();
+        assert_eq!(&actual[0..3], &[(25, 1.0), (25, 0.4), (25, 0.4)]);
+        assert_eq!(actual[9], (26, 0.75));
+        assert_eq!(marks.len(), 14);
+        assert_eq!(&marks[0..3], &[None, Some((25, 0.4)), Some((25, 0.4))]);
+        assert_eq!(marks[9], Some((24, 1.0)));
+        // four large marks: the fourth overflows to the bin with more holes (medium 7 vs small 4)
+        t.mark[2][3] = 25;
+        t.mark[3][3] = 25;
+        let (_, marks) = t.secret_summary();
+        assert_eq!(marks[9], Some((25, 0.4))); // end of the medium bin (bins are padded at the front)
     }
 
     #[test]

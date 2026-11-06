@@ -247,6 +247,10 @@ pub fn progress_name(key: &str) -> &str {
     }
 }
 
+/// Where the Spot Summary panel goes (Layout.fs AddSpotSummary: canvasAdd(…, 50., 3.)).
+pub const SPOT_SUMMARY_X: f32 = 50.0;
+pub const SPOT_SUMMARY_Y: f32 = 3.0;
+
 /// What the mouse is locating on the map: shops selling an item (0-7), or a sword cave (by its mark).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Locate {
@@ -504,6 +508,12 @@ impl View {
         // pop-ups, hover text and messages go above everything (including the notes box)
         let top = ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::unique("z1r-top")));
         self.draw_hover_info(&top);
+        if self.hover == Target::Button("SpotSummary") && self.m.quest != 4 {
+            let saved = self.shift;
+            self.shift = Vec2::ZERO;
+            self.draw_spot_summary(&top);
+            self.shift = saved;
+        }
         self.draw_popup(&top);
         if !self.toast.is_empty() && self.now < self.toast_until {
             let sz = Self::measure(&top, 14.0, &self.toast);
@@ -725,6 +735,10 @@ impl View {
         }
         let tf = format!("Triforces: {}/8", self.m.triforce_count());
         self.text(p, TIMER_X, 124.0, 12.0, ORANGE, &tf);
+        // the original's "Spot Summary" button (OverworldItemGridUI.fs; shown only for a standard overworld)
+        if self.m.quest != 4 {
+            self.button(p, rect(TIMER_X + 96.0, 121.0, 92.0, 22.0), "Spot Summary", Target::Button("SpotSummary"));
+        }
     }
 
     fn button(&mut self, p: &Painter, r: Rect, label: &str, t: Target) {
@@ -1361,6 +1375,94 @@ impl View {
     }
 
     // ------------------------------------------------------------------ hover descriptions
+    /// The Spot Summary (OverworldMapTileCustomization.MakeRemainderSummaryDisplay), shown at (50, 3) while the
+    /// button is hovered: unique locations, the secrets (actual vs. your marks), non-unique locations, and shops.
+    /// Icons 39 x 27 with a 3-px black border; dimmed to 0.4 once used.
+    fn draw_spot_summary(&mut self, p: &Painter) {
+        const CELL_W: f32 = 45.0;
+        const CELL_H: f32 = 33.0;
+        const OPA: f32 = 0.4;
+        let (x0, y0, w) = (SPOT_SUMMARY_X, SPOT_SUMMARY_Y, 700.0);
+        let mut items: Vec<(f32, Vec<(i32, f32, bool)>)> = vec![]; // (y, icons) rows, drawn after the panel size is known
+        let mut texts: Vec<(f32, String)> = vec![];
+        let mut rules: Vec<f32> = vec![];
+        let mut y = y0 + 6.0;
+        let header = |y: &mut f32, t: &str, texts: &mut Vec<(f32, String)>| {
+            texts.push((*y, t.to_string()));
+            *y += 22.0;
+        };
+        let used = |s: &Self, m: i32| s.m.uses_of_mark(m) >= s.m.max_uses(m);
+        header(&mut y, "Unique Locations", &mut texts);
+        for row in [vec![0, 1, 2, 3, 4, 5, 6, 7, 8], vec![9, 10, 11, 12, 13, 14, 15, 30, 31]] {
+            items.push((y, row.into_iter().map(|m| (m, if used(self, m) { OPA } else { 1.0 }, false)).collect()));
+            y += CELL_H;
+        }
+        rules.push(y + 3.0);
+        y += 9.0;
+        let (actual, marks) = self.m.secret_summary();
+        // the original's arrows (down / up) aren't in this font, so the headings say it in words
+        header(&mut y, "Actual Secrets (your marks below)", &mut texts);
+        items.push((y, actual.into_iter().map(|(m, o)| (m, o, false)).collect()));
+        y += CELL_H;
+        items.push((y, marks.into_iter().map(|e| e.map(|(m, o)| (m, o, false)).unwrap_or((-1, 0.0, false))).collect()));
+        y += CELL_H;
+        header(&mut y, "Your Secret Marks (matched to the secrets above)", &mut texts);
+        rules.push(y + 3.0);
+        y += 9.0;
+        header(&mut y, "Non-Unique Locations", &mut texts);
+        let mut multi_rows = vec![];
+        for m in [28, 29, 32, 33, 34] {
+            let (max, n) = (self.m.max_uses(m), self.m.uses_of_mark(m));
+            multi_rows.push((y, m, max.saturating_sub(n.min(max)), n.min(max)));
+            y += CELL_H;
+        }
+        rules.push(y + 3.0);
+        y += 9.0;
+        header(&mut y, "Shop summary (only first item shown)", &mut texts);
+        let shop_count: usize = if self.m.first_quest_overworld() { 12 } else { 15 };
+        let mut found: Vec<i32> = self.m.mark.iter().flat_map(|c| c.iter()).copied().filter(|m| (SHOP_FIRST..=SHOP_LAST).contains(m)).collect();
+        found.sort();
+        let mut shops: Vec<(i32, f32, bool)> = found.iter().map(|&m| (m, 1.0, false)).collect();
+        shops.extend(std::iter::repeat_n((32, OPA, true), shop_count.saturating_sub(found.len())));
+        items.push((y, shops));
+        y += CELL_H + 6.0;
+        // the panel
+        let panel = rect(x0, y0, w, y - y0);
+        self.fill(p, panel, Color32::BLACK);
+        self.stroke(p, panel, 3.0, Color32::GRAY);
+        for (ty, t) in texts {
+            self.text_c(p, rect(x0, ty, w, 20.0), 14.0, ORANGE, &t);
+        }
+        for ry in rules {
+            self.fill(p, rect(x0 + 6.0, ry, w - 12.0, 3.0), Color32::GRAY);
+        }
+        let icon = |s: &mut Self, x: f32, y: f32, (m, o, grey): (i32, f32, bool)| {
+            if m >= 0 {
+                let r = s.r(rect(x + 3.0, y + 3.0, CELL_W - 6.0, CELL_H - 6.0));
+                s.assets.ow_icon_faded(p, TILE_STRIP_INDEX[m as usize], r, o, grey);
+            }
+        };
+        for (ry, row) in items {
+            let x = x0 + (w - row.len() as f32 * CELL_W) / 2.0;
+            for (i, e) in row.into_iter().enumerate() {
+                icon(self, x + i as f32 * CELL_W, ry, e);
+            }
+        }
+        // non-unique: still-open ones right-aligned in a left column, used ones (dimmed) left-aligned in a right
+        // column, the two columns centred together (the original's allLefts / allRights stack panels)
+        let left_w = multi_rows.iter().map(|r| r.2).max().unwrap_or(0) as f32 * CELL_W;
+        let right_w = multi_rows.iter().map(|r| r.3).max().unwrap_or(0) as f32 * CELL_W;
+        let mid = x0 + (w - left_w - right_w) / 2.0 + left_w;
+        for (ry, m, open, n) in multi_rows {
+            for i in 0..open {
+                icon(self, mid - (i + 1) as f32 * CELL_W, ry, (m, 1.0, false));
+            }
+            for i in 0..n {
+                icon(self, mid + i as f32 * CELL_W, ry, (m, OPA, false));
+            }
+        }
+    }
+
     fn draw_hover_info(&mut self, p: &Painter) {
         if self.popup.is_some() {
             return;

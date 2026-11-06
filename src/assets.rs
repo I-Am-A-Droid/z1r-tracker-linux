@@ -150,6 +150,11 @@ impl Assets {
         self.draw(p, CUSTOM_MAP, x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
     }
 
+    /// One map screen enlarged, for the magnifier (false if there is no enlarged picture).
+    pub fn magnifier_screen(&mut self, p: &egui::Painter, x: usize, y: usize, dst: Rect, mirror: bool) -> bool {
+        self.draw(p, crate::art::MAGNIFIER, x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, 1.0, mirror)
+    }
+
     /// One overworld screen (the map is 16 x 8 screens of 16 x 11 units; all four overworlds share its ground).
     pub fn map_screen(&mut self, p: &egui::Painter, _quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
         self.draw(p, "s_map_overworld_strip8.png", x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)

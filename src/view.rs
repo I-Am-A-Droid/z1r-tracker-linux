@@ -368,6 +368,7 @@ impl View {
         self.draw_item_progress(&p);
         self.shift = self.lower_shift();
         self.draw_dungeon(&p);
+        self.draw_magnifier(&p);
         self.draw_blockers(&p);
         self.draw_timeline(&p);
         self.shift = Vec2::ZERO;
@@ -957,6 +958,51 @@ impl View {
         if self.settings.get("GiveDungeonTrackerSunglasses") {
             let area = Self::room_rect(0, 0).union(Self::room_rect(7, 7)).expand(SUNGLASSES_MARGIN);
             self.fill(p, area, Color32::from_black_alpha((SUNGLASSES_OPACITY * 255.0).round() as u8));
+        }
+    }
+
+    /// The magnifier: while the mouse is over a map screen, that screen enlarged over the dungeon rooms, with the
+    /// original's key to the coloured spots in the pictures (UIComponents::MakeMagnifier$cont@31: open cave = cyan
+    /// square, bomb / burn / recorder / pushable spot = black square edged cyan / red / yellow / magenta).
+    fn draw_magnifier(&mut self, p: &Painter) {
+        if !self.settings.get("ShowMagnifier") {
+            return;
+        }
+        let Target::MapTile(x, y) = self.hover else { return };
+        let area = Self::room_rect(0, 0).union(Self::room_rect(7, 7)).expand(3.0);
+        let key_h = 22.0;
+        let avail = Rect::from_min_max(area.min + Vec2::splat(4.0), Pos2::new(area.max.x - 4.0, area.max.y - key_h));
+        let s = (avail.width() / 16.0).min(avail.height() / 11.0);
+        let pic = Rect::from_center_size(avail.center(), Vec2::new(16.0 * s, 11.0 * s));
+        self.fill(p, area, Color32::BLACK);
+        self.stroke(p, area, 1.0, Color32::GRAY);
+        let mirror = self.m.mirror;
+        let drawn = if self.m.quest == 4 {
+            self.assets.custom_map_screen(p, x, y, self.r(pic), 1.0, mirror)
+        } else {
+            self.assets.magnifier_screen(p, x, y, self.r(pic), mirror) || self.assets.map_screen(p, self.m.quest, x, y, self.r(pic), 1.0, mirror)
+        };
+        if !drawn {
+            self.text_c(p, pic, 14.0, Color32::GRAY, "no picture of this screen");
+        }
+        self.stroke(p, pic.expand(1.0), 1.0, Color32::WHITE);
+        let label = format!("{}{}", (b'A' + y as u8) as char, x + 1);
+        self.text(p, pic.min.x + 4.0, pic.min.y + 3.0, 14.0, ORANGE, &label);
+        let key: [(Color32, Color32, &str); 5] = [
+            (Color32::from_rgb(0, 255, 255), Color32::BLACK, "open cave"),
+            (Color32::BLACK, Color32::from_rgb(0, 255, 255), "bomb spot"),
+            (Color32::BLACK, Color32::RED, "burn spot"),
+            (Color32::BLACK, Color32::YELLOW, "recorder spot"),
+            (Color32::BLACK, Color32::from_rgb(255, 0, 255), "pushable spot"),
+        ];
+        let step = area.width() / key.len() as f32;
+        for (i, (fill, edge, text)) in key.iter().enumerate() {
+            let x0 = area.min.x + 6.0 + i as f32 * step;
+            let y0 = area.max.y - key_h + 6.0;
+            let sq = rect(x0, y0, 8.0, 8.0);
+            self.fill(p, sq, *fill);
+            self.stroke(p, sq, 2.0, *edge);
+            self.text(p, x0 + 12.0, y0 - 2.0, 10.0, Color32::LIGHT_GRAY, text);
         }
     }
 

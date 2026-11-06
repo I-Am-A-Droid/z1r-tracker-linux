@@ -524,3 +524,18 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
   (where you mark which zone a dungeon/sword is in) shows zones in alphabetical order instead of geographic order."
 - Applied: option "Alphabetize hint zone list" (same setting name); clicking a hint in the Hints pop-up then steps
   through the zones in that order (left click forward, right click back) (`data::hint_zone_order`).
+
+## Magnifier (asked for; checked 2026-11-06)
+The person asked for a magnifier using the enlarged screens from Z-Tracker 1.2.3's `Magnifier` folder.
+- In the original: setting `ShowMagnifier` (TrackerModelOptions/Overworld; the person's settings have it on), used
+  while the mouse moves over the map (`WPFUI/makeAll@463-65::Invoke`, token 0x060004a0, RVA 0x1113c). Its enlarged
+  screens come from `Magnifier\quest.%d.ow.%2d.%2d.bmp` (the same read-or-create cache as the map, IL listing line
+  81318), 128 x 88 each (8 times a 16 x 11 screen). `UIComponents::MakeMagnifier$cont@31` (IL listing line 81101)
+  shows a key to the coloured spots: open cave = cyan square on black; bomb spot, burn spot, recorder spot, pushable
+  spot = black squares edged cyan, red, yellow, magenta (8 x 8, 2-px edge).
+- Applied: the 128 pictures are copied to `assets/magnifier/quest0_xXX_yY.png` and built into the program
+  (`build.rs` → `MAGNIFIER_TILES`; sheet "magnifier", 2048 x 704, 8 pixels per unit, sharp pixels). With the option
+  "Magnifier" (same setting name) on, while the mouse is over a map screen that screen is drawn as large as fits
+  over the dungeon rooms (keeping its 16:11 shape), labelled with its coordinates, with the key underneath
+  (`View::draw_magnifier`). It follows "mirror the overworld"; with the blank map it enlarges the person's own map
+  picture. Like the map pictures, these are first-quest screens and are used for every overworld choice.

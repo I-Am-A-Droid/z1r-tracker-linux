@@ -484,6 +484,15 @@ impl eframe::App for TrackerApp {
         }
         let spare = Vec2::new((avail.width() - size.x).max(0.0), (avail.height() - size.y).max(0.0)) / 2.0;
         let origin = (avail.min + spare).to_vec2().round();
+        // --screenshot only: Z1R_SCREENSHOT_HOVER=x,y pretends the mouse is over that map screen (to picture hovering)
+        if self.screenshot.is_some() {
+            if let Some((x, y)) = std::env::var("Z1R_SCREENSHOT_HOVER").ok().and_then(|v| {
+                let (x, y) = v.split_once(',')?;
+                Some((x.trim().parse::<usize>().ok()?.min(15), y.trim().parse::<usize>().ok()?.min(7)))
+            }) {
+                self.view.hover = view::Target::MapTile(x, y);
+            }
+        }
         self.view.paint(ui, origin);
 
         // the notes box

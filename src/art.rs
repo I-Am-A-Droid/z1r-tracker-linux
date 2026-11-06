@@ -1035,6 +1035,29 @@ fn overworld() -> (Img, usize) {
     (img, scale)
 }
 
+/// "magnifier": the enlarged map screens (assets/magnifier, first quest, 128 x 88 pixels each = 8 pixels per unit),
+/// put together like the map: 16 x 8 screens of 16 x 11 units. None if there are no such pictures.
+fn magnifier() -> Option<(Img, usize)> {
+    let tiles: Vec<(usize, usize, image::RgbaImage)> = MAGNIFIER_TILES
+        .iter()
+        .filter(|t| t.0 == 0 && t.1 < 16 && t.2 < 8)
+        .filter_map(|&(_, x, y, bytes)| image::load_from_memory_with_format(bytes, image::ImageFormat::Png).ok().map(|i| (x, y, i.to_rgba8())))
+        .collect();
+    let scale = tiles.first()?.2.width() as usize / 16;
+    let mut img = Img::new(256 * scale, 88 * scale);
+    for (x, y, tile) in &tiles {
+        if tile.width() as usize != 16 * scale || tile.height() as usize != 11 * scale {
+            continue;
+        }
+        for (px, py, p) in tile.enumerate_pixels() {
+            let [r, g, b, a] = p.0;
+            let i = (y * 11 * scale + py as usize) * img.w + x * 16 * scale + px as usize;
+            img.px[i] = C(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a as f32 / 255.0);
+        }
+    }
+    Some((img, scale))
+}
+
 /// The tracker's own drawing of the overworld (16 x 8 screens of 16 x 11 units), `scale` pixels per unit, for screens
 /// that have no picture in assets/overworld. The edges
 /// between kinds of ground are bent a little with smooth noise so they look natural; forests get trees, rock gets
@@ -1227,7 +1250,7 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
         rooms.put(&room_img(i, false), i * 52, 0);
         rooms.put(&room_img(i, true), i * 52, 36);
     }
-    vec![
+    let mut sheets = vec![
         ("icons7x7.png", items, 4.0, false),
         (GREY_ITEMS, grey, 4.0, false),
         ("icons3x7.png", shop3.image(), 4.0, false),
@@ -1240,8 +1263,15 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
         ("new_icons13x9.png", rooms.image(), 4.0, false),
         ("s_map_overworld_strip8.png", map.image(), map_scale as f32, true),
         ("ZTlogo64x64.png", logo().image(), 2.0, false),
-    ]
+    ];
+    if let Some((mag, scale)) = magnifier() {
+        sheets.push((MAGNIFIER, mag.image(), scale as f32, true));
+    }
+    sheets
 }
+
+/// The sheet of enlarged map screens for the magnifier.
+pub const MAGNIFIER: &str = "magnifier";
 
 /// The window, taskbar and Dock icon: the logo.
 pub fn window_icon() -> eframe::egui::IconData {
@@ -1440,6 +1470,14 @@ mod tests {
         assert_eq!((scale, map.w, map.h), (3, 768, 264));
         // every pixel came from a picture (nothing see-through left)
         assert!(map.px.iter().all(|c| c.3 > 0.0));
+    }
+
+    #[test]
+    fn the_magnifier_has_every_screen_at_8_pixels_per_unit() {
+        assert_eq!(super::MAGNIFIER_TILES.len(), 128);
+        let (img, scale) = super::magnifier().unwrap();
+        assert_eq!((scale, img.w, img.h), (8, 2048, 704));
+        assert!(img.px.iter().all(|c| c.3 > 0.0));
     }
 
     #[test]

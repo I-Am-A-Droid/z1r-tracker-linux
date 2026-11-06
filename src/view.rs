@@ -142,20 +142,23 @@ pub struct Popup {
     pub hover: Option<usize>,
     pub bounds: Rect,
     pub action: Action,
+    /// how many lines the description at the bottom may take
+    pub foot_lines: usize,
 }
 
 const PAD: f32 = 8.0;
 const TITLE_H: f32 = 22.0;
 const FOOT_H: f32 = 22.0;
+const FOOT_LINE_H: f32 = 16.0;
 
 impl Popup {
     pub fn new(title: impl Into<String>, cols: usize, cw: f32, ch: f32, anchor: Pos2, action: Action) -> Self {
-        Popup { title: title.into(), choices: vec![], cols, cell: Vec2::new(cw, ch), anchor, keep_open: false, hover: None, bounds: Rect::NOTHING, action }
+        Popup { title: title.into(), choices: vec![], cols, cell: Vec2::new(cw, ch), anchor, keep_open: false, hover: None, bounds: Rect::NOTHING, action, foot_lines: 1 }
     }
     pub fn layout(&mut self, size: Vec2) {
         let rows = self.choices.len().div_ceil(self.cols);
         let w = self.cols as f32 * self.cell.x + PAD * 2.0;
-        let h = rows as f32 * self.cell.y + PAD * 2.0 + TITLE_H + FOOT_H;
+        let h = rows as f32 * self.cell.y + PAD * 2.0 + TITLE_H + FOOT_H + (self.foot_lines.max(1) - 1) as f32 * FOOT_LINE_H;
         let x = (self.anchor.x - w / 2.0).clamp(2.0, (size.x - w - 2.0).max(2.0));
         let y = self.anchor.y.clamp(2.0, (size.y - h - 2.0).max(2.0));
         self.bounds = Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h));
@@ -1703,7 +1706,14 @@ impl View {
             self.draw_extras_references(p, pop.bounds);
         }
         let foot = pop.hover.and_then(|h| pop.choices.get(h)).map(|c| c.label.clone()).unwrap_or_else(|| "Click outside to cancel".into());
-        self.text(p, pop.bounds.min.x + PAD, pop.bounds.max.y - FOOT_H + 3.0, 12.0, Color32::WHITE, &foot.replace('\n', " "));
+        if pop.foot_lines > 1 {
+            let top = pop.bounds.max.y - FOOT_H - (pop.foot_lines - 1) as f32 * FOOT_LINE_H;
+            for (i, line) in foot.lines().take(pop.foot_lines).enumerate() {
+                self.text(p, pop.bounds.min.x + PAD, top + 3.0 + i as f32 * FOOT_LINE_H, 12.0, Color32::WHITE, line);
+            }
+        } else {
+            self.text(p, pop.bounds.min.x + PAD, pop.bounds.max.y - FOOT_H + 3.0, 12.0, Color32::WHITE, &foot.replace('\n', " "));
+        }
         self.popup = Some(pop);
     }
 }

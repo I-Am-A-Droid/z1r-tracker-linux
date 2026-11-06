@@ -117,6 +117,12 @@ pub fn hotkeys_path() -> PathBuf {
 }
 
 impl HotKeys {
+    /// The key for an overworld selection ("Level1", "Nothing", …), for "HotKey = …" in descriptions (the original
+    /// shows the first one, HotKeys.fs AppendHotKeyToDescription; here the first by name when several are set).
+    pub fn overworld_key_for(&self, sel: &str) -> Option<String> {
+        self.overworld.iter().filter(|(_, v)| v.as_str() == sel).map(|(k, _)| k.describe()).min()
+    }
+
     pub fn load() -> HotKeys {
         let mut hk = HotKeys::default();
         let path = hotkeys_path();

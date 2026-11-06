@@ -753,3 +753,15 @@ shield, ring; levels 1-9; any roads 1-4, wood sword, white sword, magical sword 
 large, medium, small secret, door repair, money making game; Take Any, potion shop, hint shop, Start, P2. The book
 shop (mark 18) is no longer offered (saves that have one still load and show it). With this fixed layout "Shops
 first" no longer changes the pop-up; it still sets the order the mouse wheel steps through marks.
+
+## Marking pop-up descriptions (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "After marking a shop": 0 matches (it is a
+.NET user string), native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the IL and
+the 1.3.1 source.
+- The original's description box under the grid (WPFUI.fs; 2.1.0 IL listing line 24688): the choice's name, with
+  `HotKeys.HotKeyProcessor.AppendHotKeyToDescription` adding "\nHotKey = <first key>" when a key is set for it
+  (HotKeys.fs), and for a shop (marks 16-23) a second line "After marking a shop, left-click it again to mark a
+  second item" (font 10, under a 1-px grey rule).
+- Applied: the marking pop-up's description (bottom, now up to three lines, `Popup::foot_lines`) shows the name and
+  uses, the shop reminder for shops, and "HotKey = ..." from HotKeys.txt (`HotKeys::overworld_key_for`,
+  `input::with_hotkey`). With several keys for one mark, the first by name is shown.

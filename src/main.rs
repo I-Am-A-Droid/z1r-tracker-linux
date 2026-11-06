@@ -504,6 +504,12 @@ impl eframe::App for TrackerApp {
                     self.view.hover = view::Target::Button("SpotSummary");
                 }
             }
+            // Z1R_SCREENSHOT_POPUP_HOVER=n points at choice n of the open pop-up
+            if let Some(n) = std::env::var("Z1R_SCREENSHOT_POPUP_HOVER").ok().and_then(|v| v.parse::<usize>().ok()) {
+                if let Some(pop) = &mut self.view.popup {
+                    pop.hover = Some(n);
+                }
+            }
             // Z1R_SCREENSHOT_OPEN=extras opens the Starting Items and Extra Drops panel
             if self.frames == 5 {
                 match std::env::var("Z1R_SCREENSHOT_OPEN").as_deref() {

@@ -16,6 +16,17 @@ enum Btn {
 
 /// Columns of the map-marking pop-up (asked for: 9, so the nine levels share a row).
 pub const MARK_PICKER_COLS: usize = 9;
+/// Shown for shops in the marking pop-up (WPFUI.fs / 2.1.0 IL listing line 24688).
+pub const SHOP_SECOND_ITEM_HINT: &str = "After marking a shop, left-click it again to mark a second item";
+
+/// A description with the hot key on its own line, as the original's AppendHotKeyToDescription ("\nHotKey = %s").
+pub fn with_hotkey(desc: String, key: Option<String>) -> String {
+    match key {
+        Some(k) => format!("{desc}\nHotKey = {k}"),
+        None => desc,
+    }
+}
+
 /// An empty cell in the marking pop-up.
 pub const PICKER_BLANK: i32 = -99;
 /// The marking pop-up's rows, as asked for (marks; -1 = none):
@@ -622,6 +633,7 @@ impl View {
         let order: Vec<i32> = MARK_PICKER_LAYOUT.iter().flatten().copied().collect();
         let title = format!("Mark {}{} ({})", (b'A' + y as u8) as char, x + 1, HINT_ZONE_NAMES[zone_at(x, y)]);
         let mut pop = Popup::new(title, MARK_PICKER_COLS, 54.0, 39.0, mark_picker_anchor(x, y, self.m.mirror), Action::Mark(x, y, order.clone()));
+        pop.foot_lines = 3;
         for &m in &order {
             if m == PICKER_BLANK {
                 let mut c = Choice::new(Icon::None, "", "").en(false);
@@ -630,12 +642,19 @@ impl View {
                 continue;
             }
             if m == -1 {
-                pop.choices.push(Choice::new(Icon::None, "none", "Unmarked").sel(self.m.mark[x][y] == -1));
+                let label = with_hotkey("Unmarked".to_string(), self.hotkeys.overworld_key_for("Nothing"));
+                pop.choices.push(Choice::new(Icon::None, "none", label).sel(self.m.mark[x][y] == -1));
                 continue;
             }
             let t = &TILES[m as usize];
             let (used, max) = (self.m.uses_of_mark(m), self.m.max_uses(m));
-            let label = if max < 999 { format!("{}  ({used}/{max} used)", t.name) } else { t.name.to_string() };
+            let mut label = if max < 999 { format!("{}  ({used}/{max} used)", t.name) } else { t.name.to_string() };
+            // the original's description box: for shops the reminder about the second item, then the hot key
+            if (SHOP_FIRST..=SHOP_LAST).contains(&m) {
+                label += "\n";
+                label += SHOP_SECOND_ITEM_HINT;
+            }
+            let label = with_hotkey(label, self.hotkeys.overworld_key_for(t.hotkey));
             let text = match m {
                 36 => START_MARK_TEXT,
                 37 => "P2",

@@ -419,6 +419,9 @@ impl Tracker {
         n
     }
 
+    /// The original's PlayerHearts (TrackerModel::recomputePlayerStateSummary, token 0x06000306, RVA 0x9d70):
+    /// 3, plus every heart container had, plus each Take Any heart taken (state 1), plus MaxHeartsDifferential
+    /// (the +1 / −1 of the Starting Items and Extra Drops panel).
     pub fn max_hearts(&self) -> i64 {
         let boxes = self.all_boxes().iter().filter(|b| b.cell == HEART_CONTAINER && b.has == Has::Yes).count() as i64;
         3 + boxes + self.take_any_hearts.iter().filter(|t| **t == 1).count() as i64 + self.max_hearts_diff

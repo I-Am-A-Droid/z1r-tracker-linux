@@ -558,3 +558,21 @@ and extra drops") it opens the panel built by OverworldItemGridUI.fs `makeExtras
 Applied: the "..." button now opens that panel in the same rows (`input::extras_cells`, 11 columns): triforces,
 weapons, utility items, then the hearts count with +1 / −1. Before, it listed only the 14 starting items and 8
 starting triforce pieces.
+
+## Starting Items and Extra Drops in 2.1.0 (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Extra Drops": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `OverworldItemGridUI::makeExtrasPanelAndepRefresh@496` (IL listing line 99987) in 2.1.0 has the same texts as the
+  1.3.1 source: "Starting Items and Extra Drops", "Mark any items you start the game with / or get as monster
+  drops/extra dungeon drops / in this section", "Max Hearts: %d", " You can adjust hearts here:", " +1 ", " -1 ",
+  "Vanilla dungeon item reference / Don't click here", "1Q", "2Q".
+- Its item rows (IL listing line 101842 on) are the same order; the magical sword there is
+  `StartingItemsAndExtras.PlayerHasMagicalSword`, a flag separate from the main tracker's progress one. 2.1.0 never
+  writes it to save files (`SaveAndLoad::SaveStartingItemsAndExtras`, token 0x06000008, RVA 0x270c, lists
+  HDNStartingTriforcePieces, White sword … Book, MaxHeartsDifferential but no magical sword), nor reads it back, and
+  `TrackerModel::recomputePlayerStateSummary` (token 0x06000306, RVA 0x9d70) counts only the progress flag for the
+  sword level (3 = magical sword, unless white/magical sword are replaced by bomb upgrades). So in the original that
+  tick is lost on reload and changes nothing; the rebuild deliberately ties the panel's magical sword to the saved
+  progress flag (PlayerHasMagicalSword in PlayerProgressAndTakeAnyHearts), which does count and survive a reload.
+- Max hearts (same function): 3 + heart containers had + Take Any hearts taken (state 1) + MaxHeartsDifferential —
+  the rebuild's `Tracker::max_hearts` is the same formula.

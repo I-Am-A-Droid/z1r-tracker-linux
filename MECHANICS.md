@@ -255,3 +255,14 @@ native_strings_find "ShorterAppWindow": 0 matches): `Layout/ShorterApplicationLa
 showing either the map part or the dungeon part in the same place (`upper` / `lower` canvases) with a 3-px line between.
 The rebuild's wide arrangement keeps both parts visible side by side instead, and uses the same 3-px line as the divider
 (colour red, inferred from the name RED_LINE); the right half starts at x = 768 + 3, so the wide tracker is 1539 × 490.
+
+## Window title, sizes and save versions (checked 2026-11-06)
+Native tools rechecked (only `_CorExeMain@thunk` at 0x792d6e; native_strings_find "Z-Tracker": 0 matches); from the IL:
+- Window title "Z-Tracker for Zelda 1 Randomizer" (`Program/MyWindow::.ctor`, token 0x0600004d, RVA 0x50f0). Used as is.
+- Window sizes: "Z-Tracker can run in a few window sizes: '4/3 size', 'Default', '5/6 size', or '2/3 size'."
+  (`Program::menu@873`): SmallerAppWindowScaleFactor from 2/3 to 4/3 is accepted (it was capped at 1 before).
+- Loading a save from another version (`Program/startButtonBehavior@1214-3::Invoke`, token 0x060002b3, RVA 0xb1…):
+  the file's "Version" is compared with the program's; if different, versions starting "1.2" or "1.3" get "Loading this
+  file might not work", others "Loading this file will probably fail", inside "You are running Z-Tracker version '%s'
+  but the save file was created using version '%s'. %s, but Z-Tracker will attempt to load it anyway." The original
+  asks with an "Attempt Load" button; the rebuild shows the same message and loads.

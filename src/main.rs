@@ -102,10 +102,10 @@ fn main() {
         view.show_toast("Original Z1R_WPF.exe not found: drawing plain shapes. Options > read the pictures from it.", 8.0);
     }
 
-    let scale = if view.settings.get("SmallerAppWindow") { view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(0.4, 1.0) as f32 } else { 1.0 };
+    let scale = if view.settings.get("SmallerAppWindow") { view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(MIN_WINDOW_FACTOR, MAX_WINDOW_FACTOR) as f32 } else { 1.0 };
     let native = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title(format!("Z-Tracker for Linux v{}", data::VERSION))
+            .with_title(WINDOW_TITLE)
             .with_app_id("z1r-tracker")
             .with_inner_size(start_size(scale))
             .with_min_inner_size([W * 0.4, H * 0.4]),
@@ -140,6 +140,12 @@ fn start_size(scale: f32) -> [f32; 2] {
         .unwrap_or([W * scale, H * scale])
 }
 
+/// The original's window title (Program/MyWindow::.ctor, token 0x0600004d).
+const WINDOW_TITLE: &str = "Z-Tracker for Zelda 1 Randomizer";
+/// The original offers window sizes 4/3, default, 5/6 and 2/3 (SmallerAppWindowScaleFactor; text in Program::menu@873).
+const MIN_WINDOW_FACTOR: f64 = 2.0 / 3.0 - 0.01;
+const MAX_WINDOW_FACTOR: f64 = 4.0 / 3.0 + 0.01;
+
 static EXIT_CODE: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
 
 /// Autosave interval in seconds (WPFUI/makeAll@1981-404: DispatcherTimer.Interval = TimeSpan.FromSeconds 60).
@@ -158,8 +164,26 @@ fn load_file(view: &mut View, path: &Path) -> Result<(), String> {
     view.m.load_json(&text)?;
     view.paused = view.m.prog("PlayerHasRescuedZelda");
     let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-    view.show_toast(format!("Loaded {name}"), 3.0);
+    match version_warning(&text) {
+        Some(w) => view.show_toast(w, 10.0),
+        None => view.show_toast(format!("Loaded {name}"), 3.0),
+    }
     Ok(())
+}
+
+/// A save made by another Z-Tracker version (Program/startButtonBehavior@1214-3, token 0x060002b3): the same message
+/// as the original; it then tries to load the file anyway.
+fn version_warning(text: &str) -> Option<String> {
+    let root: serde_json::Value = serde_json::from_str(&model::strip_trailing_commas(text.trim_start_matches('\u{feff}'))).ok()?;
+    let saved = root.get("Version")?.as_str()?.to_string();
+    if saved == data::VERSION {
+        return None;
+    }
+    let how = if saved.starts_with("1.2") || saved.starts_with("1.3") { "Loading this file might not work" } else { "Loading this file will probably fail" };
+    Some(format!(
+        "You are running Z-Tracker version '{}' but the save file was created using version '{saved}'. {how}, but Z-Tracker will attempt to load it anyway.",
+        data::VERSION
+    ))
 }
 
 struct TrackerApp {
@@ -365,7 +389,7 @@ impl eframe::App for TrackerApp {
         let ctx = ui.ctx().clone();
         if !self.zoom_set {
             // the "Smaller app window" option sets the window to that fraction of the full size
-            let s = if self.view.settings.get("SmallerAppWindow") { self.view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(0.4, 1.0) as f32 } else { 1.0 };
+            let s = if self.view.settings.get("SmallerAppWindow") { self.view.settings.get_f64("SmallerAppWindowScaleFactor", 0.666).clamp(MIN_WINDOW_FACTOR, MAX_WINDOW_FACTOR) as f32 } else { 1.0 };
             if self.frames_seen > 0 {
                 ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(W * s, H * s) / ctx.zoom_factor()));
             }
@@ -570,3 +594,15 @@ fn show_run_custom(view: &mut View) {
 
 #[allow(dead_code)]
 fn _unused(_: Vec2) {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn warns_about_saves_from_other_versions_like_the_original() {
+        assert_eq!(super::version_warning(r#"{"Version": "2.1.0"}"#), None);
+        let old = super::version_warning(r#"{"Version": "1.3.2",}"#).unwrap();
+        assert!(old.contains("version '1.3.2'") && old.contains("Loading this file might not work"));
+        let other = super::version_warning(r#"{"Version": "2.0.3"}"#).unwrap();
+        assert!(other.contains("Loading this file will probably fail"));
+    }
+}

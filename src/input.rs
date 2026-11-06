@@ -14,6 +14,9 @@ enum Btn {
     Middle,
 }
 
+/// Columns of the map-marking pop-up (asked for: 9, so the nine levels share a row).
+pub const MARK_PICKER_COLS: usize = 9;
+
 /// One cell of the "Starting Items and Extra Drops" panel (the original's "..." button,
 /// OverworldItemGridUI.makeExtrasPanelAndepRefresh in the Z-Tracker source).
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -258,7 +261,7 @@ impl View {
     fn choose(&mut self, action: Action, i: usize, right: bool) {
         match action {
             Action::Mark(x, y, order) => {
-                self.set_mark(x, y, if i == 0 { -1 } else { order[i - 1] });
+                self.set_mark(x, y, order.get(i).copied().unwrap_or(-1));
                 self.after_mark(x, y);
             }
             Action::ShopSecond(x, y) => {
@@ -576,11 +579,10 @@ impl View {
         }
     }
 
-    fn open_mark_picker(&mut self, x: usize, y: usize, p: Pos2) {
+    pub fn open_mark_picker(&mut self, x: usize, y: usize, p: Pos2) {
         let order = self.mark_order();
         let title = format!("Mark {}{} ({})", (b'A' + y as u8) as char, x + 1, HINT_ZONE_NAMES[zone_at(x, y)]);
-        let mut pop = Popup::new(title, 8, 54.0, 39.0, Pos2::new(p.x, (p.y + 20.0).min(H - 330.0)), Action::Mark(x, y, order.clone()));
-        pop.choices.push(Choice::new(Icon::None, "none", "Unmarked").sel(self.m.mark[x][y] == -1));
+        let mut pop = Popup::new(title, MARK_PICKER_COLS, 54.0, 39.0, Pos2::new(p.x, (p.y + 20.0).min(H - 330.0)), Action::Mark(x, y, order.clone()));
         for &m in &order {
             let t = &TILES[m as usize];
             let (used, max) = (self.m.uses_of_mark(m), self.m.max_uses(m));
@@ -592,6 +594,8 @@ impl View {
             };
             pop.choices.push(Choice::new(Icon::Ow(TILE_STRIP_INDEX[m as usize]), text, label).en(self.m.can_use(m, x, y)).sel(self.m.mark[x][y] == m));
         }
+        // "none" comes last, so with 9 columns levels 1-9 share the first row
+        pop.choices.push(Choice::new(Icon::None, "none", "Unmarked").sel(self.m.mark[x][y] == -1));
         self.popup = Some(pop);
     }
 
@@ -1064,7 +1068,7 @@ mod tests {
         v.m.seconds = 125;
         let order: Vec<i32> = (0..TILES.len() as i32).collect();
         // pick "Armos" in the mark picker for screen (12,1)
-        v.choose(Action::Mark(12, 1, order), ARMOS_MARK as usize + 1, false);
+        v.choose(Action::Mark(12, 1, order), ARMOS_MARK as usize, false);
         assert_eq!(v.m.mark[12][1], ARMOS_MARK);
         let pop = v.popup.take().expect("the item picker opens right away");
         assert!(matches!(pop.action, Action::Item(BoxId::Armos)));
@@ -1077,7 +1081,7 @@ mod tests {
 
     fn mark_take_any(v: &mut View, x: usize, y: usize, pick: usize) {
         let order: Vec<i32> = (0..TILES.len() as i32).collect();
-        v.choose(Action::Mark(x, y, order), TAKE_ANY_MARK as usize + 1, false);
+        v.choose(Action::Mark(x, y, order), TAKE_ANY_MARK as usize, false);
         let pop = v.popup.take().expect("the take-any menu opens");
         v.choose(pop.action, pick, false);
     }
@@ -1122,7 +1126,7 @@ mod tests {
     fn wood_sword_cave_can_give_the_sword_or_be_left() {
         let mut v = view();
         let order: Vec<i32> = (0..TILES.len() as i32).collect();
-        v.choose(Action::Mark(7, 7, order.clone()), WOOD_SWORD_CAVE_MARK as usize + 1, false);
+        v.choose(Action::Mark(7, 7, order.clone()), WOOD_SWORD_CAVE_MARK as usize, false);
         let pop = v.popup.take().expect("the take-this menu opens");
         v.choose(pop.action, 0, false); // wood sword
         assert!(v.m.prog("PlayerHasWoodSword"));
@@ -1235,7 +1239,7 @@ mod tests {
     fn other_marks_do_not_open_the_item_picker() {
         let mut v = view();
         let order: Vec<i32> = (0..TILES.len() as i32).collect();
-        v.choose(Action::Mark(3, 3, order), 1, false); // level 1
+        v.choose(Action::Mark(3, 3, order), 0, false); // level 1
         assert!(v.popup.is_none());
     }
 }

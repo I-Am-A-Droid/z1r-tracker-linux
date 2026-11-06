@@ -726,3 +726,7 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are f
   for SECOND, MIXED_SECOND and BLANK — the rebuild's first-quest test (overworld 0 or 2) matches.
 - Applied: the empty shop slots now use a greyscale copy of the markers made with the original's formula
   (`art::GREY_MARKERS`, s = (R+G+B)/5, grey = s + 60), instead of a darker tint.
+
+## Map-marking pop-up in 9 columns (changed on request)
+The pop-up for marking a map screen is laid out in 9 columns (`MARK_PICKER_COLS`), and "none" moved from the first
+to the last cell, so levels 1-9 fill the first row, any roads and sword caves the second, and so on.

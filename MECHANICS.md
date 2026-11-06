@@ -713,3 +713,16 @@ save name stays PlayerHasBoomBook and it still locates book shops.
   overworld) or 15 shops.
 - Applied: `View::draw_spot_summary`, `Tracker::secret_summary` (tested), button beside "Triforces". The original's
   ↓/↑ arrows in the secret headings are written as words (the font has no arrows).
+
+## Spot Summary in 2.1.0 (checked 2026-11-06)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Spot Summary": 0 matches,
+native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the .NET IL.
+- `OverworldMapTileCustomization::MakeRemainderSummaryDisplay` (token 0x06001ac6, RVA 0x5a4e8) in 2.1.0 has the
+  same texts ("Unique Locations", "↓ Actual Secrets ↓", "↑ Your Secret Marks ↑", "Non-Unique Locations", "Shop
+  summary (only first item shown)"), unique lists 0-8 and 9-15, 30, 31, secret marks 25/26/27/24 capped at 14,
+  bins 3/7/4 (first-quest overworld) or 1/7/6, opacities 0.4 / 0.75 / 0.01 (padding), non-unique marks 28, 29, 32,
+  33, 34, shop count 12 / 15 and the empty shop slots as `Graphics::greyscale` of the hint-shop icon (32) at 0.4.
+- `OverworldData/OWQuest::get_IsFirstQuestOW` (token 0x0600092b, RVA 0x17b94): true for FIRST and MIXED_FIRST, false
+  for SECOND, MIXED_SECOND and BLANK — the rebuild's first-quest test (overworld 0 or 2) matches.
+- Applied: the empty shop slots now use a greyscale copy of the markers made with the original's formula
+  (`art::GREY_MARKERS`, s = (R+G+B)/5, grey = s + 60), instead of a darker tint.

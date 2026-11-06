@@ -103,11 +103,11 @@ impl Assets {
     pub fn zitem16(&mut self, p: &egui::Painter, i: i32, dst: Rect, shade: f32) -> bool {
         i >= 0 && self.draw(p, "zelda_items16x16.png", i as f32 * 16.0, 0.0, 16.0, 16.0, dst, shade, false)
     }
-    /// A map marker picture at the given opacity, optionally greyed (the Spot Summary's dimmed icons).
+    /// A map marker picture at the given opacity, optionally in the original's greyscale (the Spot Summary's icons).
     pub fn ow_icon_faded(&mut self, p: &egui::Painter, i: i32, dst: Rect, opacity: f32, grey: bool) -> bool {
-        let a = (opacity.clamp(0.0, 1.0) * 255.0) as u8;
-        let tint = if grey { Color32::from_rgba_unmultiplied(110, 110, 110, a) } else { Color32::from_white_alpha(a) };
-        i >= 0 && self.draw_tinted(p, "s_icon_overworld_strip39.png", i as f32 * 16.0, 0.0, 16.0, 11.0, dst, tint, false)
+        let tint = Color32::from_white_alpha((opacity.clamp(0.0, 1.0) * 255.0) as u8);
+        let sheet = if grey { crate::art::GREY_MARKERS } else { "s_icon_overworld_strip39.png" };
+        i >= 0 && self.draw_tinted(p, sheet, i as f32 * 16.0, 0.0, 16.0, 11.0, dst, tint, false)
     }
     pub fn ow_icon(&mut self, p: &egui::Painter, i: i32, dst: Rect) -> bool {
         i >= 0 && self.draw(p, "s_icon_overworld_strip39.png", i as f32 * 16.0, 0.0, 16.0, 11.0, dst, 1.0, false)

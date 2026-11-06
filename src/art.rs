@@ -1226,10 +1226,13 @@ fn strip(cells: Vec<Img>) -> Img {
 
 /// The item pictures in grey, for items not had yet in the progress row.
 pub const GREY_ITEMS: &str = "icons7x7 grey";
+/// The map markers in the original's grey (the Spot Summary's empty shop slots: Graphics.greyscale of the hint shop).
+pub const GREY_MARKERS: &str = "markers grey";
 
 /// Every picture sheet: its name, the picture, how many pixels make one of the units the drawing code uses, and
 /// whether it is pixel art (shown with sharp pixels when enlarged).
 pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
+    let markers = strip((0..39).map(marker_img).collect()).image();
     let (map, map_scale) = overworld();
     let items = strip((0..32).map(|i| item_img(i, 28)).collect()).image();
     let grey = greyscale(&items);
@@ -1258,7 +1261,8 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
         ("icons10x10.png", strip((0..10).map(icon10).collect()).image(), 4.0, false),
         ("zelda_bosses16x16.png", strip((0..32).map(monster_img).collect()).image(), 2.0, false),
         ("zelda_items16x16.png", strip((0..13).map(floor_img).collect()).image(), 2.0, false),
-        ("s_icon_overworld_strip39.png", strip((0..39).map(marker_img).collect()).image(), 4.0, false),
+        ("s_icon_overworld_strip39.png", markers.clone(), 4.0, false),
+        (GREY_MARKERS, greyscale(&markers), 4.0, false),
         ("s_btn_tr_dungeon_num_strip18.png", strip((0..18).map(level_number_img).collect()).image(), 4.0, false),
         ("new_icons13x9.png", rooms.image(), 4.0, false),
         ("s_map_overworld_strip8.png", map.image(), map_scale as f32, true),

@@ -48,7 +48,8 @@ Security and click **Open Anyway**.
 
 The `.dmg` can only be made on a Mac (it needs Apple's tools): GitHub makes it on every upload (artifact
 `z1r-tracker-macos-dmg`), or run `macos/make-dmg.sh` on a Mac with `rustup target add aarch64-apple-darwin
-x86_64-apple-darwin`.
+x86_64-apple-darwin`. The app's version comes from `Cargo.toml` and its icon from `macos/z1r-tracker.icns`, the
+same logo as the Windows and Linux icons (made from `windows/z1r-tracker.png`).
 
 ## Build and run
 

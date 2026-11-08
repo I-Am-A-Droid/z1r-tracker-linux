@@ -11,6 +11,8 @@
 	<string>io.github.i-am-a-droid.z1r-tracker</string>
 	<key>CFBundleExecutable</key>
 	<string>z1r-tracker</string>
+	<key>CFBundleIconFile</key>
+	<string>z1r-tracker</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key>

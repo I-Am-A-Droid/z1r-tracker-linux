@@ -25,6 +25,9 @@ lipo -create -output "$APP/Contents/MacOS/z1r-tracker" \
   $(for t in $TARGETS; do echo "target/$t/release/z1r-tracker"; done)
 sed "s/VERSION/$VERSION/g" macos/Info.plist > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+# the app's icon (Info.plist's CFBundleIconFile): the tracker's logo, the same picture as the Windows and AppImage
+# icons, in every size macOS asks for (macos/z1r-tracker.icns, made from windows/z1r-tracker.png)
+cp macos/z1r-tracker.icns "$APP/Contents/Resources/z1r-tracker.icns"
 # not signed by a registered developer: an ad-hoc signature is what Apple Silicon needs to run it at all
 codesign --force --deep --sign - "$APP"
 

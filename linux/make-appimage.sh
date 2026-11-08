@@ -54,4 +54,6 @@ chmod +x "$APPDIR/AppRun"
 
 # full paths: appimagetool may run from another folder (e.g. with APPIMAGE_EXTRACT_AND_RUN=1)
 ARCH=x86_64 "$APPIMAGETOOL" --no-appstream "$PWD/$APPDIR" "$PWD/$OUT"
-echo "Made $OUT"
+# keep the copy kept beside this script current too, so whichever one is opened is the new version
+cp "$OUT" linux/Z-Tracker-x86_64.AppImage
+echo "Made $OUT (and linux/Z-Tracker-x86_64.AppImage)"

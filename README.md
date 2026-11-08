@@ -34,6 +34,8 @@ and saves.
 
 To make those files yourself on Linux: `cargo zigbuild --release --target x86_64-pc-windows-gnu`
 (needs `pip install ziglang` and `cargo install cargo-zigbuild`), then compile `windows/installer.iss` with Inno Setup.
+Or run `windows/make-windows.sh`, which does both (Inno Setup under Wine; set `ISCC=` to its `ISCC.exe`), makes the
+zip, and puts the same files in `dist/` and `windows/`. The version button's About box shows when a copy was built.
 
 Every upload to GitHub builds the program for Linux (also as an AppImage), Windows (`z1r-tracker.exe` and the installer) and macOS (the `.dmg`):
 open the latest run under the repository's **Actions** tab and download it from **Artifacts**. Tagged versions

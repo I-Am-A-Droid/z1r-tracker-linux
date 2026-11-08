@@ -82,6 +82,22 @@ key to the coloured cave, bomb, burn, recorder and pushable spots.
 The window can be resized freely and everything scales; when the window is wide, the dungeon maps and timeline move
 beside the overworld map.
 
+## Streaming to OBS Studio
+
+Turn on **Options → Stream the tracker to OBS over the network**. The tracker then shows its address (it is also
+shown under the option), for example `http://192.168.1.20:8765/stream.mjpg`. In OBS, on this computer or another
+one on your network:
+
+1. Sources → **+** → **Media Source**.
+2. Untick **Local File**, put the address in **Input**, and set **Input Format** to `mpjpeg`.
+
+A **Browser Source** works too: use the address without `stream.mjpg` (for example `http://192.168.1.20:8765/`)
+and set its width and height to the tracker window's size. `…/frame.jpg` gives a single picture.
+
+The stream is the whole tracker window, at about 10–15 frames a second, and is only sent while something is
+watching it. It only sends pictures, so nothing can be changed through it. If OBS on another computer can't
+connect, allow port 8765 (TCP) through this computer's firewall.
+
 ## How it matches the original
 
 `MECHANICS.md` lists the values and rules taken from the original program and where each was found;
@@ -89,8 +105,9 @@ beside the overworld map.
 
 ## Not included yet
 
-Voice commands and spoken reminders, online co-op sync, gamepad input, the broadcast/streaming window, route
-drawing and drawing-layer icons (these are kept in save files but not shown).
+Voice commands and spoken reminders, online co-op sync, gamepad input, the original's separate broadcast window
+(the whole window can be streamed to OBS instead, see above), route drawing and drawing-layer icons (these are
+kept in save files but not shown).
 
 ## Credits
 

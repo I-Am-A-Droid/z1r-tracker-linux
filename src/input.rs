@@ -967,7 +967,14 @@ impl View {
 
     fn options_choices(&self) -> Vec<Choice> {
         let check = |b: bool| if b { "[x] " } else { "[  ] " };
-        let mut v: Vec<Choice> = BOOL_OPTIONS.iter().map(|(k, l, _)| Choice::new(Icon::None, format!("{}{l}", check(self.settings.get(k))), *l)).collect();
+        let mut v: Vec<Choice> = BOOL_OPTIONS
+            .iter()
+            .map(|(k, l, _)| {
+                // the stream's option says where OBS finds it
+                let hint = if *k == "StreamToOBS" { format!("OBS Media Source input (format mpjpeg): {}", crate::stream::urls(crate::stream::STREAM_PORT).0) } else { l.to_string() };
+                Choice::new(Icon::None, format!("{}{l}", check(self.settings.get(k))), hint)
+            })
+            .collect();
         v.push(Choice::new(Icon::None, format!("{}Mirror the overworld (this seed)", check(self.m.mirror)), "Mirror overworld"));
         v.push(Choice::new(Icon::None, format!("{}Boomstick seed (this seed)", check(self.m.boomstick_seed)), "Boomstick seed"));
         let q = match self.m.quest {

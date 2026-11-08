@@ -865,3 +865,22 @@ the rules are from the .NET IL.
 - Fixed: the rebuild kept one bare count per minute and saved that, which the original would read as wrong pairs. It
   now keeps (seconds, spots) pairs added when the count changes (`Tracker::note_spots_remaining`), saves and loads them
   flattened like the original, and "Reset the TIMER" does all three steps above (`Tracker::reset_timer`, tested).
+
+## Streaming to OBS (asked for; rebuild-only)
+
+The original has no network stream. For streaming it can open a separate "broadcast" window (option
+`ShowBroadcastWindow`, built by `Broadcast.MakeBroadcastWindow`; also `BroadcastWindowSize`, `BroadcastWindowLT`,
+`BroadcastWindowIncludesOverworldMagnifier`), meant to be captured from the screen. Asked for here: streaming the
+tracker to an OBS media source over the network. Option `StreamToOBS` (off by default, kept in
+Z1R_Tracker_settings.json) starts a small web server on every network interface, port 8765 (`stream::STREAM_PORT`):
+
+- `/stream.mjpg`: motion JPEG (`multipart/x-mixed-replace; boundary=frame`), JPEG quality 85. OBS Media Source:
+  Local File off, Input = that address, Input Format = `mpjpeg`.
+- `/`: a page holding that stream, for a Browser Source.
+- `/frame.jpg`: one picture.
+
+Frames are the window as drawn (egui `request_screenshot`), captured at most `STREAM_FPS` = 15 times a second and
+only while a stream or picture is being asked for. Encoding runs on its own thread, and a frame that arrives while
+the previous one is still being encoded is dropped. When nothing new is drawn the last frame is sent again each
+second, so players don't give up. Turning the option off closes the server. Checked 2026-11-08 by running the
+tracker: `/frame.jpg` answered in 0.07 s (an 845 × 1064 JPEG) and `/stream.mjpg` gave 29 frames in 3 s.

@@ -10,6 +10,7 @@ mod input;
 mod model;
 mod platform;
 mod settings;
+mod stream;
 mod view;
 
 use assets::Assets;
@@ -246,6 +247,9 @@ struct TrackerApp {
     /// managers add the title bar), so saving takes that back off and the window doesn't creep each start
     placed_at: Option<egui::Pos2>,
     place_shift: Option<Vec2>,
+    /// the web server for OBS, while the "Stream the tracker to OBS" option is on
+    streamer: Option<stream::Streamer>,
+    last_stream_frame: Instant,
 }
 
 impl TrackerApp {
@@ -253,7 +257,7 @@ impl TrackerApp {
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
             shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_custom_map: false, custom_map_text: String::new(), zoom_set: false, frames_seen: 0,
-            placed_at: None, place_shift: None,
+            placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(),
         }
     }
 
@@ -410,6 +414,39 @@ impl TrackerApp {
             _ => {}
         }
         ctx.request_repaint();
+    }
+
+    /// Starts or stops the OBS stream to follow its option, and while someone watches, captures the window about
+    /// STREAM_FPS times a second (see stream.rs).
+    fn update_stream(&mut self, ctx: &egui::Context) {
+        let want = self.view.settings.get("StreamToOBS");
+        if want != self.streamer.is_some() {
+            if want {
+                match stream::Streamer::start(stream::STREAM_PORT) {
+                    Ok(s) => {
+                        let (live, _page) = s.urls();
+                        self.view.show_toast(format!("Streaming for OBS: {live}  (Media Source, Input Format mpjpeg)"), 20.0);
+                        self.streamer = Some(s);
+                    }
+                    Err(e) => {
+                        self.view.settings.set("StreamToOBS", false);
+                        self.view.show_toast(format!("Could not stream on port {}: {e}", stream::STREAM_PORT), 8.0);
+                    }
+                }
+            } else {
+                self.streamer = None;
+                self.view.show_toast("Stopped streaming to OBS.", 3.0);
+            }
+        }
+        let Some(s) = &self.streamer else { return };
+        if s.wanted() {
+            let every = std::time::Duration::from_millis(1000 / stream::STREAM_FPS);
+            if self.last_stream_frame.elapsed() >= every {
+                self.last_stream_frame = Instant::now();
+                ctx.request_screenshot(s.frame_taker());
+            }
+            ctx.request_repaint_after(every);
+        }
     }
 
     fn windows(&mut self, ctx: &egui::Context) {
@@ -596,6 +633,9 @@ impl eframe::App for TrackerApp {
             self.last_autosave_minute = self.view.m.seconds / 60;
         }
         self.windows(&ctx);
+        if self.screenshot.is_none() {
+            self.update_stream(&ctx);
+        }
 
         // --screenshot: draw about 120 frames, then save the window's picture and exit
         if let Some(path) = self.screenshot.clone() {

@@ -1,7 +1,8 @@
 //! Streaming the tracker's window over the network, for OBS Studio (and anything that plays a motion-JPEG stream).
 //!
-//! While the "Stream the tracker to the network" option is on, a small web server listens on every network
-//! interface at STREAM_PORT and serves:
+//! While streaming is on (the Stream button's window, or the option), a small web server listens at STREAM_PORT on
+//! the chosen address — 127.0.0.1 for OBS on this computer ("Local"), or one network adapter's address ("Network")
+//! — and serves:
 //! - `/stream.mjpg` — the window as a live motion-JPEG stream (multipart/x-mixed-replace). In OBS: add a Media Source,
 //!   untick "Local File", Input = `http://<this computer>:8765/stream.mjpg`, Input Format = `mpjpeg`.
 //! - `/` — a page showing that stream, for an OBS Browser Source (width and height = the tracker's window size).
@@ -11,7 +12,7 @@
 
 use eframe::egui::ColorImage;
 use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpListener, TcpStream, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Condvar, Mutex};
@@ -54,13 +55,15 @@ struct Shared {
 pub struct Streamer {
     shared: Arc<Shared>,
     frames: SyncSender<Frame>,
+    ip: IpAddr,
     port: u16,
+    accepting: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Streamer {
-    /// Starts listening on every interface at `port`. Fails if the port is taken.
-    pub fn start(port: u16) -> std::io::Result<Streamer> {
-        let listener = TcpListener::bind(("0.0.0.0", port))?;
+    /// Starts listening on `ip` at `port`. Fails if the port is taken or the address isn't this computer's.
+    pub fn start(ip: IpAddr, port: u16) -> std::io::Result<Streamer> {
+        let listener = TcpListener::bind((ip, port))?;
         listener.set_nonblocking(true)?;
         let shared = Arc::new(Shared { latest: Mutex::new(Latest::default()), changed: Condvar::new(), stop: AtomicBool::new(false), watchers: AtomicUsize::new(0) });
 
@@ -80,7 +83,7 @@ impl Streamer {
         });
 
         let acc = shared.clone();
-        std::thread::spawn(move || {
+        let accepting = std::thread::spawn(move || {
             while !acc.stop.load(Ordering::SeqCst) {
                 match listener.accept() {
                     Ok((stream, _)) => {
@@ -94,7 +97,17 @@ impl Streamer {
                 }
             }
         });
-        Ok(Streamer { shared, frames: tx, port })
+        Ok(Streamer { shared, frames: tx, ip, port, accepting: Some(accepting) })
+    }
+
+    /// The address it listens on.
+    pub fn ip(&self) -> IpAddr {
+        self.ip
+    }
+
+    /// How many are watching the live stream (or waiting for a picture).
+    pub fn watchers(&self) -> usize {
+        self.shared.watchers.load(Ordering::SeqCst)
     }
 
     /// Whether anyone is waiting for pictures (frames are only worth capturing then).
@@ -114,13 +127,16 @@ impl Streamer {
 
     /// The addresses to give OBS: (live stream for a Media Source, page for a Browser Source).
     pub fn urls(&self) -> (String, String) {
-        urls(self.port)
+        urls(self.ip, self.port)
     }
 }
 
-/// The addresses OBS would use on `port`: (live stream for a Media Source, page for a Browser Source).
-pub fn urls(port: u16) -> (String, String) {
-    let host = local_ip().unwrap_or_else(|| "localhost".into());
+/// The addresses OBS uses for `ip` and `port`: (live stream for a Media Source, page for a Browser Source).
+pub fn urls(ip: IpAddr, port: u16) -> (String, String) {
+    let host = match ip {
+        IpAddr::V6(v6) => format!("[{v6}]"),
+        IpAddr::V4(v4) => v4.to_string(),
+    };
     (format!("http://{host}:{port}/stream.mjpg"), format!("http://{host}:{port}/"))
 }
 
@@ -128,16 +144,61 @@ impl Drop for Streamer {
     fn drop(&mut self) {
         self.shared.stop.store(true, Ordering::SeqCst);
         self.shared.changed.notify_all();
+        // wait for the listener to close (at most ~0.1 s), so the same address can be used again at once
+        if let Some(t) = self.accepting.take() {
+            let _ = t.join();
+        }
     }
+}
+
+/// A network adapter's address that OBS on another computer could reach.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Adapter {
+    pub name: String,
+    pub ip: IpAddr,
+}
+
+impl Adapter {
+    pub fn describe(&self) -> String {
+        format!("{} — {}", self.ip, self.name)
+    }
+}
+
+/// This computer's network adapters with an IPv4 address (not the loopback one), the one the system uses to reach
+/// other networks first.
+pub fn adapters() -> Vec<Adapter> {
+    let mut v: Vec<Adapter> = if_addrs::get_if_addrs()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|i| !i.is_loopback() && i.ip().is_ipv4())
+        .map(|i| Adapter { ip: i.ip(), name: i.name })
+        .collect();
+    v.dedup();
+    if let Some(main) = route_ip() {
+        v.sort_by_key(|a| a.ip != main);
+    }
+    v
+}
+
+/// The address for "Local": OBS on this computer.
+pub const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+/// Where to stream from, by the settings: "Local" (StreamOnNetwork off, the default) is 127.0.0.1; "Network" is the
+/// chosen adapter's address (StreamAddress), or the main network address when none was chosen.
+pub fn chosen_ip(settings: &crate::settings::Settings) -> IpAddr {
+    if !settings.get("StreamOnNetwork") {
+        return LOCAL_IP;
+    }
+    settings.get_str("StreamAddress").trim().parse::<IpAddr>().ok().or_else(route_ip).unwrap_or(LOCAL_IP)
 }
 
 /// This computer's address on the local network: the one a connection to a public address would come from. A UDP
 /// "connect" only picks the route; nothing is sent.
-fn local_ip() -> Option<String> {
+fn route_ip() -> Option<IpAddr> {
     let s = UdpSocket::bind("0.0.0.0:0").ok()?;
     s.connect("192.0.2.1:80").ok()?;
     let ip = s.local_addr().ok()?.ip();
-    (!ip.is_unspecified()).then(|| ip.to_string())
+    (!ip.is_unspecified()).then_some(ip)
 }
 
 fn encode_jpeg(img: &ColorImage, pointer: Option<[f32; 2]>, scale: f32) -> Option<Vec<u8>> {
@@ -279,7 +340,8 @@ mod tests {
     fn serves_the_page_a_frame_and_the_stream() {
         // any free port
         let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-        let st = Streamer::start(port).unwrap();
+        let st = Streamer::start(LOCAL_IP, port).unwrap();
+        assert_eq!(st.urls().0, format!("http://127.0.0.1:{port}/stream.mjpg"));
         assert!(!st.wanted());
         // stands in for the tracker: a frame whenever someone is waiting
         let take = st.frame_taker(None, 1.0);
@@ -317,5 +379,16 @@ mod tests {
         let text = String::from_utf8_lossy(&live);
         assert!(text.contains("multipart/x-mixed-replace; boundary=frame") && text.contains("--frame"));
         assert_eq!(get("/nothing", 64).starts_with(b"HTTP/1.1 404"), true);
+        // stopping frees the address straight away
+        drop(st);
+        let again = Streamer::start(LOCAL_IP, port).unwrap();
+        drop(again);
+    }
+
+    #[test]
+    fn addresses_for_obs() {
+        let ip: IpAddr = "192.168.1.20".parse().unwrap();
+        assert_eq!(urls(ip, 8765), ("http://192.168.1.20:8765/stream.mjpg".to_string(), "http://192.168.1.20:8765/".to_string()));
+        assert!(adapters().iter().all(|a| !a.ip.is_loopback() && a.ip.is_ipv4()));
     }
 }

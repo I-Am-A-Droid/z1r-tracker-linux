@@ -250,6 +250,10 @@ struct TrackerApp {
     /// the web server for OBS, while the "Stream the tracker to OBS" option is on
     streamer: Option<stream::Streamer>,
     last_stream_frame: Instant,
+    /// the Stream button's window, the network adapters it offers, and why streaming last failed to start
+    show_stream: bool,
+    stream_adapters: Vec<stream::Adapter>,
+    stream_error: Option<String>,
 }
 
 impl TrackerApp {
@@ -257,7 +261,7 @@ impl TrackerApp {
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
             shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_custom_map: false, custom_map_text: String::new(), zoom_set: false, frames_seen: 0,
-            placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(),
+            placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(), show_stream: false, stream_adapters: vec![], stream_error: None,
         }
     }
 
@@ -410,6 +414,10 @@ impl TrackerApp {
                 self.show_custom_map = true;
             }
             "ShowRun" => show_run_custom(&mut self.view),
+            "Stream" => {
+                self.stream_adapters = stream::adapters();
+                self.show_stream = true;
+            }
             "Zoom" => self.zoom_set = false,
             _ => {}
         }
@@ -420,22 +428,28 @@ impl TrackerApp {
     /// STREAM_FPS times a second (see stream.rs).
     fn update_stream(&mut self, ctx: &egui::Context) {
         let want = self.view.settings.get("StreamToOBS");
-        if want != self.streamer.is_some() {
-            if want {
-                match stream::Streamer::start(stream::STREAM_PORT) {
-                    Ok(s) => {
-                        let (live, _page) = s.urls();
-                        self.view.show_toast(format!("Streaming for OBS: {live}  (Media Source, Input Format mpjpeg)"), 20.0);
-                        self.streamer = Some(s);
-                    }
-                    Err(e) => {
-                        self.view.settings.set("StreamToOBS", false);
-                        self.view.show_toast(format!("Could not stream on port {}: {e}", stream::STREAM_PORT), 8.0);
-                    }
-                }
-            } else {
-                self.streamer = None;
+        let ip = stream::chosen_ip(&self.view.settings);
+        // a new address (Local / Network, another adapter) restarts the server there
+        if self.streamer.as_ref().is_some_and(|s| !want || s.ip() != ip) {
+            self.streamer = None;
+            if !want {
                 self.view.show_toast("Stopped streaming to OBS.", 3.0);
+            }
+        }
+        if want && self.streamer.is_none() {
+            match stream::Streamer::start(ip, stream::STREAM_PORT) {
+                Ok(s) => {
+                    let (live, _page) = s.urls();
+                    self.view.show_toast(format!("Streaming for OBS: {live}  (Media Source, Input Format mpjpeg)"), 20.0);
+                    self.streamer = Some(s);
+                    self.stream_error = None;
+                }
+                Err(e) => {
+                    self.view.settings.set("StreamToOBS", false);
+                    let why = format!("Could not stream at {ip} port {}: {e}", stream::STREAM_PORT);
+                    self.view.show_toast(why.clone(), 8.0);
+                    self.stream_error = Some(why);
+                }
             }
         }
         let Some(s) = &self.streamer else { return };
@@ -452,7 +466,91 @@ impl TrackerApp {
         }
     }
 
+    /// The Stream button's window: streaming on or off, Local or Network (and which adapter), the address to paste
+    /// into OBS, and how to set OBS up.
+    fn stream_window(&mut self, ctx: &egui::Context) {
+        let mut open = self.show_stream;
+        egui::Window::new("Stream to OBS Studio").open(&mut open).default_width(470.0).resizable(false).collapsible(false).show(ctx, |ui| {
+            let settings = &mut self.view.settings;
+            let mut on = settings.get("StreamToOBS");
+            if ui.checkbox(&mut on, "Streaming on").changed() {
+                settings.set("StreamToOBS", on);
+            }
+            ui.add_space(4.0);
+            ui.label("Stream to:");
+            let mut network = settings.get("StreamOnNetwork");
+            let was = network;
+            ui.radio_value(&mut network, false, "Local: OBS is on this computer (127.0.0.1)");
+            ui.radio_value(&mut network, true, "Network: OBS is on another computer");
+            if network != was {
+                settings.set("StreamOnNetwork", network);
+                if network {
+                    self.stream_adapters = stream::adapters();
+                }
+            }
+            if network {
+                ui.horizontal(|ui| {
+                    ui.label("Network adapter:");
+                    let current = stream::chosen_ip(settings);
+                    let shown = self.stream_adapters.iter().find(|a| a.ip == current).map(|a| a.describe()).unwrap_or_else(|| current.to_string());
+                    egui::ComboBox::from_id_salt("stream_adapter").selected_text(shown).width(260.0).show_ui(ui, |ui| {
+                        for a in &self.stream_adapters {
+                            if ui.selectable_label(a.ip == current, a.describe()).clicked() {
+                                settings.set_str("StreamAddress", &a.ip.to_string());
+                            }
+                        }
+                    });
+                    if ui.button("Refresh").on_hover_text("Look for network adapters again").clicked() {
+                        self.stream_adapters = stream::adapters();
+                    }
+                });
+                if self.stream_adapters.is_empty() {
+                    ui.colored_label(Color32::YELLOW, "No network adapter with an address was found; check that this computer is on a network.");
+                }
+            }
+            ui.add_space(6.0);
+            let (live, page) = stream::urls(stream::chosen_ip(settings), stream::STREAM_PORT);
+            ui.strong("Address for the OBS Media Source:");
+            ui.horizontal(|ui| {
+                let mut text = live.clone();
+                ui.add(egui::TextEdit::singleline(&mut text).desired_width(340.0).font(egui::TextStyle::Monospace));
+                if ui.button("Copy").clicked() {
+                    ui.ctx().copy_text(live.clone());
+                    self.view.show_toast("Address copied.", 2.0);
+                }
+            });
+            match (&self.streamer, &self.stream_error) {
+                (Some(s), _) => {
+                    let n = s.watchers();
+                    ui.colored_label(Color32::LIGHT_GREEN, if n == 0 { "Streaming. Nothing is watching yet.".to_string() } else { format!("Streaming to {n} viewer(s).") });
+                }
+                (None, Some(e)) => {
+                    ui.colored_label(Color32::YELLOW, e);
+                }
+                (None, None) => {
+                    ui.colored_label(Color32::GRAY, "Not streaming: tick \"Streaming on\" above.");
+                }
+            }
+            ui.separator();
+            ui.strong("Setting up OBS Studio");
+            ui.label("1. Tick \"Streaming on\" above.");
+            ui.label("2. In OBS, under Sources, click + and choose Media Source. Give it a name and click OK.");
+            ui.label("3. Untick \"Local File\".");
+            ui.label("4. Paste the address above into \"Input\".");
+            ui.label("5. Set \"Input Format\" to mpjpeg, then click OK.");
+            ui.label("6. Drag and resize the source in OBS as you like. It shows the whole tracker window, mouse pointer included.");
+            ui.add_space(4.0);
+            ui.label(format!("Or use a Browser Source with the address {page} (width and height = the tracker window's size)."));
+            if network {
+                ui.label(format!("OBS must be on the same network. If it can't connect, allow port {} (TCP) through this computer's firewall.", stream::STREAM_PORT));
+            }
+            ui.label("Close this window before going live: the stream shows what the tracker window shows.");
+        });
+        self.show_stream = open;
+    }
+
     fn windows(&mut self, ctx: &egui::Context) {
+        self.stream_window(ctx);
         let mut open = self.show_custom_map;
         let mut close = false;
         egui::Window::new("Overworld picture for the blank map").open(&mut open).default_width(520.0).show(ctx, |ui| {
@@ -596,6 +694,7 @@ impl eframe::App for TrackerApp {
                     Ok("mark") => self.view.open_mark_picker(4, 3, egui::Pos2::new(220.0, 250.0)),
                     Ok("quest-only") => self.view.ask_quest_only_dont_care(true),
                     Ok("reset") => self.view.open_reset_menu(),
+                    Ok("stream") => self.view.commands.push("Stream"),
                     _ => {}
                 }
             }

@@ -971,7 +971,7 @@ impl View {
             .iter()
             .map(|(k, l, _)| {
                 // the stream's option says where OBS finds it
-                let hint = if *k == "StreamToOBS" { format!("OBS Media Source input (format mpjpeg): {}", crate::stream::urls(crate::stream::STREAM_PORT).0) } else { l.to_string() };
+                let hint = if *k == "StreamToOBS" { format!("OBS Media Source input (format mpjpeg): {}", crate::stream::urls(crate::stream::chosen_ip(&self.settings), crate::stream::STREAM_PORT).0) } else { l.to_string() };
                 Choice::new(Icon::None, format!("{}{l}", check(self.settings.get(k))), hint)
             })
             .collect();

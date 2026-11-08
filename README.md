@@ -84,12 +84,17 @@ beside the overworld map.
 
 ## Streaming to OBS Studio
 
-Turn on **Options → Stream the tracker to OBS over the network**. The tracker then shows its address (it is also
-shown under the option), for example `http://192.168.1.20:8765/stream.mjpg`. In OBS, on this computer or another
-one on your network:
+Click **Stream** (under Reset...). The window that opens has:
 
-1. Sources → **+** → **Media Source**.
-2. Untick **Local File**, put the address in **Input**, and set **Input Format** to `mpjpeg`.
+- **Streaming on**: starts and stops the stream. A red dot on the Stream button shows while it streams.
+- **Local** (OBS on this computer, address `127.0.0.1`) or **Network** (OBS on another computer), with a list of
+  this computer's network adapters to pick which address to stream from (**Refresh** looks again).
+- The address to give OBS, in its own box with a **Copy** button, for example
+  `http://127.0.0.1:8765/stream.mjpg`.
+- The steps for OBS: Sources → **+** → **Media Source**, untick **Local File**, paste the address into
+  **Input**, set **Input Format** to `mpjpeg`.
+
+Close the window before going live, because the stream shows whatever the tracker window shows.
 
 A **Browser Source** works too: use the address without `stream.mjpg` (for example `http://192.168.1.20:8765/`)
 and set its width and height to the tracker window's size. `…/frame.jpg` gives a single picture.

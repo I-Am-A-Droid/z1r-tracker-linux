@@ -740,11 +740,15 @@ impl View {
             self.text(p, TIMER_X, 50.0, 10.0, ORANGE, "paused - click to resume");
         }
         self.hit(rect(TIMER_X, 2.0, 148.0, 56.0), Target::Timer);
-        // three columns: Options, Hints, Reset / Save, Load
-        let names: [(&'static str, &'static str); 5] = [("Options", "Options"), ("Hints", "Hints"), ("Reset...", "Reset"), ("Save", "Save"), ("Load", "Load")];
+        // three columns: Options, Hints, Reset / Save, Load, Stream (the stream button is the rebuild's own: it opens
+        // the OBS streaming window, and a red dot shows while it streams)
+        let names: [(&'static str, &'static str); 6] = [("Options", "Options"), ("Hints", "Hints"), ("Reset...", "Reset"), ("Save", "Save"), ("Load", "Load"), ("Stream", "Stream")];
         for (i, (label, n)) in names.iter().enumerate() {
             let r = rect(TIMER_X + (i % 3) as f32 * 65.0, 66.0 + (i / 3) as f32 * 28.0, 62.0, 24.0);
             self.button(p, r, label, Target::Button(n));
+            if *n == "Stream" && self.settings.get("StreamToOBS") {
+                self.fill_round(p, rect(r.max.x - 9.0, r.min.y + 3.0, 6.0, 6.0), Color32::from_rgb(230, 40, 40), 3);
+            }
         }
         let tf = format!("Triforces: {}/8", self.m.triforce_count());
         self.text(p, TIMER_X, 124.0, 12.0, ORANGE, &tf);

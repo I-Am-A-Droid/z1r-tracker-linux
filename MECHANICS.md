@@ -872,7 +872,12 @@ The original has no network stream. For streaming it can open a separate "broadc
 `ShowBroadcastWindow`, built by `Broadcast.MakeBroadcastWindow`; also `BroadcastWindowSize`, `BroadcastWindowLT`,
 `BroadcastWindowIncludesOverworldMagnifier`), meant to be captured from the screen. Asked for here: streaming the
 tracker to an OBS media source over the network. Option `StreamToOBS` (off by default, kept in
-Z1R_Tracker_settings.json) starts a small web server on every network interface, port 8765 (`stream::STREAM_PORT`):
+Z1R_Tracker_settings.json; also "Streaming on" in the Stream button's window, under Reset...) starts a small web
+server, port 8765 (`stream::STREAM_PORT`), on one address (`stream::chosen_ip`): 127.0.0.1 when
+`StreamOnNetwork` is off ("Local", the default), or the network adapter chosen in the Stream window
+(`StreamAddress`; by default the address the system routes outside traffic from). Changing the address restarts
+the server there. Checked by running it: Local answered only on 127.0.0.1, Network only on the adapter's address.
+The original has no such button or window; these keys are the rebuild's own.
 
 - `/stream.mjpg`: motion JPEG (`multipart/x-mixed-replace; boundary=frame`), JPEG quality 85. OBS Media Source:
   Local File off, Input = that address, Input Format = `mpjpeg`.

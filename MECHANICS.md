@@ -910,5 +910,17 @@ token 0x060008bd: `ldc.i4.3; stsfld BroadcastWindowSize@131`), and reading the s
 handlers at RVA 0x81f50, 0x8201c, 0x820e8). The Stream window now has the same choice (Size: Full size / 2/3 size /
 1/3 size), kept in the same `BroadcastWindowSize` key with the same default and limits (`stream::broadcast_size`,
 `stream::broadcast_scale`, `stream::BROADCAST_SIZES`). Each streamed frame, pointer included, is shrunk by that
-scale before it is sent (tested; running it at size 1 sent 282 × 355 for an 845 × 1064 window). Checked 2026-11-08 by running the
+scale before it is sent (tested; running it at size 1 sent 282 × 355 for an 845 × 1064 window).
+
+Blocking (modal) windows (checked 2026-11-08). In the original a pop-up blocks the main window:
+`CanvasManager.CreatePopup(blackSunglassesOpacity)` (token 0x0600278b, RVA 0x8c834) pushes the opacity on a
+stack, sets a black "sunglasses" canvas (Background = Black, IsHitTestVisible = false, made in
+`CanvasManager..ctor`, token 0x06002784) to the largest opacity on the stack, and puts a new full-window canvas on
+top (Background = Transparent, IsHitTestVisible = true, Opacity 1) that takes every click meant for the tracker;
+`DismissPopup` (token 0x0600278c, RVA 0x8c9fc) pops both. `DoModal` (token 0x06002751, RVA 0x8bbac) and
+`DoModalDocked` (token 0x06002753, RVA 0x8bc10) ask for opacity 0.5, the value most pop-ups use (DoModalOpa is
+called with 0.5 in 16 places; others use 0.35, 0.25, 0.7 or 0.01). The Stream window is a modal like this: the
+tracker behind it takes no clicks, wheel or keys (main.rs skips `View::handle_input` and the F5/Ctrl+S keys and
+makes the notes box inert), and is darkened with black at opacity 0.5 (`MODAL_SUNGLASSES_OPACITY`). The rebuild's
+own item and marking pop-ups don't dim the tracker yet. Checked 2026-11-08 by running the
 tracker: `/frame.jpg` answered in 0.07 s (an 845 × 1064 JPEG) and `/stream.mjpg` gave 29 frames in 3 s.

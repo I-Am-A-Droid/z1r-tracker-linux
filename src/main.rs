@@ -178,6 +178,10 @@ const WINDOW_TITLE: &str = "Z-Tracker for Zelda 1 Randomizer";
 /// The original offers window sizes 4/3, default, 5/6 and 2/3 (SmallerAppWindowScaleFactor; text in Program::menu@873).
 const MIN_WINDOW_FACTOR: f64 = 2.0 / 3.0 - 0.01;
 const MAX_WINDOW_FACTOR: f64 = 4.0 / 3.0 + 0.01;
+/// How dark a modal window makes the tracker behind it: the original's DoModal (token 0x06002751, RVA 0x8bbac) asks
+/// for black "sunglasses" at opacity 0.5, which CanvasManager.CreatePopup (token 0x0600278b, RVA 0x8c834) lays over
+/// the whole window under a transparent layer that takes every click.
+const MODAL_SUNGLASSES_OPACITY: f32 = 0.5;
 
 /// How the window is drawn: on Windows with Direct3D/Vulkan through wgpu (works without good OpenGL drivers, e.g.
 /// in virtual machines or remote desktops), elsewhere with OpenGL. Z1R_RENDERER=glow or =wgpu overrides it.
@@ -476,7 +480,8 @@ impl TrackerApp {
         // a modal window: the tracker behind it is dimmed and takes no clicks or keys until it is closed (Close,
         // Esc, or a click outside it)
         let mut close = false;
-        let shown = egui::Modal::new(egui::Id::unique("stream_to_obs")).show(ctx, |ui| {
+        let sunglasses = Color32::from_black_alpha((MODAL_SUNGLASSES_OPACITY * 255.0).round() as u8);
+        let shown = egui::Modal::new(egui::Id::unique("stream_to_obs")).backdrop_color(sunglasses).show(ctx, |ui| {
             ui.set_width(470.0);
             ui.heading("Stream to OBS Studio");
             ui.separator();

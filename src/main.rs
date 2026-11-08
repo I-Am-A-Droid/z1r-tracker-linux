@@ -728,11 +728,21 @@ impl eframe::App for TrackerApp {
                     Ok("reset") => self.view.open_reset_menu(),
                     Ok("stream") => self.view.commands.push("Stream"),
                     Ok("monsters") => {
-                        // a few rooms with monsters, and the monster picker open
-                        for (i, m) in [1usize, 3, 9, 14, 18, 25, 27].into_iter().enumerate() {
-                            self.view.m.maps[0].rooms[i][7].monster = m;
+                        // rooms with monsters and floor drops (the bottom row done, the one above not), and with
+                        // Z1R_SCREENSHOT_PICKER=1 the monster picker open
+                        for (i, m) in [1usize, 3, 4, 9, 14, 18, 29, 27].into_iter().enumerate() {
+                            for (y, done) in [(6, false), (7, true)] {
+                                let room = &mut self.view.m.maps[0].rooms[i][y];
+                                room.kind = 1;
+                                room.completed = done;
+                                room.monster = m;
+                                room.floor_drop = 1 + i % 8;
+                                room.floor_drop_bright = !done;
+                            }
                         }
-                        self.view.open_monster(3, 4, egui::Pos2::new(200.0, 560.0));
+                        if std::env::var("Z1R_SCREENSHOT_PICKER").is_ok() {
+                            self.view.open_monster(3, 4, egui::Pos2::new(200.0, 560.0));
+                        }
                     }
                     _ => {}
                 }

@@ -938,3 +938,19 @@ still applies. `art::original_monsters` builds the sheet at 4 pixels per unit wi
 block, and the room corners and the monster picker draw whole 18-unit cells (`art::MONSTER_CELL`). The drawn 8 × 8
 patterns are kept only as a fallback if the sheet can't be read (tested: border, black inside and sprite pixels
 match the sheet).
+
+Where a room shows its monster and floor drop (checked 2026-11-08 in the shipped program; the native entry point
+0x792d6e is only the `_CorExeMain` stub, so this is from the IL). `DungeonRoomState.CurrentDisplayEx$cont@191`
+(token 0x06002a83, RVA 0x977e0) builds each room on a 13·3 × 9·3 = 39 × 27 canvas:
+- the monster's 18 × 18 picture (`MonsterDetailExtensions.Bmp`) at (−5, −3), hanging off the top-left corner;
+- if the room is completed, a black 18 × 18 `DockPanel` at opacity 0.5 over it at the same place, except when the
+  monster is BlueBubble or RedBubble (`switch` on MonsterDetail − 4: values 4, 5) or Traps, Other or Other2 (`switch`
+  on MonsterDetail − 29: values 29, 30, 31), which stay bright;
+- the floor drop's 18 × 18 picture at (44 − 18, 30 − 18) = (26, 12), the bottom right, with the same black 0.5 square
+  over it while the drop isn't marked bright.
+The source of the same version (DungeonRoomState.fs, `canvasAdd(c, monsterIcon, -5., -3.)`) agrees. The rebuild
+had these swapped (monster bottom right at 16 × 16, floor drop top left) and didn't darken monsters; it now uses the
+original's places and sizes (`view::MONSTER_AT`, `FLOOR_DROP_AT`, `ROOM_DETAIL_SIZE`), the 0.5 darkening
+(`DONE_DARKEN`, drawn as a 0.5 tint, which looks the same as a half-black square) and the stay-bright list
+(`monster_stays_bright`, tested against the monster names). Its rooms are already 39 × 27, so the numbers carry over
+unchanged.

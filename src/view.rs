@@ -36,6 +36,18 @@ pub const TAB_H: f32 = 24.0;
 pub const DUNGEON_HEADER_H: f32 = 30.0;
 pub const ROOM_W: f32 = 39.0;
 pub const ROOM_H: f32 = 27.0;
+/// A room's monster and floor-drop pictures (DungeonRoomState.CurrentDisplayEx$cont@191, token 0x06002a83, RVA
+/// 0x977e0, in a 39 x 27 room canvas): 18 x 18, the monster at (-5,-3), the floor drop at (44-18, 30-18), and the black
+/// square laid over them when darkened at opacity 0.5.
+pub const ROOM_DETAIL_SIZE: f32 = 18.0;
+pub const MONSTER_AT: (f32, f32) = (-5.0, -3.0);
+pub const FLOOR_DROP_AT: (f32, f32) = (44.0 - 18.0, 30.0 - 18.0);
+pub const DONE_DARKEN: f32 = 0.5;
+/// Monsters that stay bright in a completed room: BlueBubble (4), RedBubble (5), Traps (29), Other (30), Other2 (31)
+/// (the same function's switches on MonsterDetail − 4 and − 29).
+pub fn monster_stays_bright(m: usize) -> bool {
+    matches!(m, 4 | 5 | 29 | 30 | 31)
+}
 pub const ROOM_PITCH_X: f32 = 51.0;
 pub const ROOM_PITCH_Y: f32 = 39.0;
 pub const ROOM_X0: f32 = 6.0;
@@ -1145,13 +1157,21 @@ impl View {
                     let n = ROOM_TYPE_NAMES[room.kind];
                     self.text_c(p, r, 10.0, Color32::BLACK, &n[..n.len().min(3)]);
                 }
-                if room.monster > 0 && !self.assets.boss16(p, MONSTER_ICON[room.monster], self.r(rect(r.max.x - 17.0, r.max.y - 17.0, 16.0, 16.0))) {
-                    self.text(p, r.max.x - 16.0, r.max.y - 14.0, 10.0, Color32::RED, &MONSTER_NAMES[room.monster][..2]);
+                // as the original (DungeonRoomState.CurrentDisplayEx$cont@191): the monster's 18x18 picture hangs off the
+                // room's top-left corner, darkened once the room is done unless it is a bubble, traps or "other"; the
+                // floor drop sits at the bottom right, darkened while it hasn't been marked bright
+                if room.monster > 0 {
+                    let shade = if room.completed && !monster_stays_bright(room.monster) { 1.0 - DONE_DARKEN } else { 1.0 };
+                    let at = rect(r.min.x + MONSTER_AT.0, r.min.y + MONSTER_AT.1, ROOM_DETAIL_SIZE, ROOM_DETAIL_SIZE);
+                    if !self.assets.boss_shaded(p, MONSTER_ICON[room.monster], self.r(at), shade) {
+                        self.text(p, at.min.x + 2.0, at.min.y + 2.0, 10.0, Color32::RED, &MONSTER_NAMES[room.monster][..2]);
+                    }
                 }
                 if room.floor_drop > 0 {
-                    let shade = if room.floor_drop_bright { 1.0 } else { 0.45 };
-                    if !self.assets.zitem16(p, FLOOR_DROP_ICON[room.floor_drop], self.r(rect(r.min.x + 1.0, r.min.y + 1.0, 14.0, 14.0)), shade) {
-                        self.text(p, r.min.x + 2.0, r.min.y + 1.0, 10.0, Color32::YELLOW, &FLOOR_DROP_NAMES[room.floor_drop][..1]);
+                    let shade = if room.floor_drop_bright { 1.0 } else { 1.0 - DONE_DARKEN };
+                    let at = rect(r.min.x + FLOOR_DROP_AT.0, r.min.y + FLOOR_DROP_AT.1, ROOM_DETAIL_SIZE, ROOM_DETAIL_SIZE);
+                    if !self.assets.zitem16(p, FLOOR_DROP_ICON[room.floor_drop], self.r(at.shrink(1.0)), shade) {
+                        self.text(p, at.min.x + 2.0, at.min.y + 2.0, 10.0, Color32::YELLOW, &FLOOR_DROP_NAMES[room.floor_drop][..1]);
                     }
                 }
                 if self.m.maps[sel].circled[x][y] {
@@ -1735,5 +1755,20 @@ impl View {
             self.text(p, pop.bounds.min.x + PAD, pop.bounds.max.y - FOOT_H + 3.0, 12.0, Color32::WHITE, &foot.replace('\n', " "));
         }
         self.popup = Some(pop);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::MONSTERS;
+
+    #[test]
+    fn only_bubbles_traps_and_others_stay_bright_in_a_done_room() {
+        let bright: Vec<&str> = (0..MONSTERS.len()).filter(|&m| monster_stays_bright(m)).map(|m| MONSTERS[m]).collect();
+        assert_eq!(bright, ["BlueBubble", "RedBubble", "Traps", "Other", "Other2"]);
+        // the original's places in its 39 x 27 room
+        assert_eq!((MONSTER_AT, FLOOR_DROP_AT, ROOM_DETAIL_SIZE), ((-5.0, -3.0), (26.0, 12.0), 18.0));
+        assert_eq!((ROOM_W, ROOM_H), (13.0 * 3.0, 9.0 * 3.0));
     }
 }

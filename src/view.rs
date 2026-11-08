@@ -123,6 +123,8 @@ pub enum Action {
     ResetTimer,
     StartOver,
     ResetKeepMaps,
+    /// true: first-quest-only spots; false: second-quest-only
+    QuestOnlyDontCare(bool),
     Options,
     HideTiles,
     Hints,

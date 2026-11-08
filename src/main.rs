@@ -538,6 +538,7 @@ impl eframe::App for TrackerApp {
                     Ok("extras") => self.view.open_starting_items(egui::Pos2::new(view::W / 2.0, 60.0)),
                     Ok("recorder") => self.view.commands.push("RecorderSettingsAtLegend"),
                     Ok("mark") => self.view.open_mark_picker(4, 3, egui::Pos2::new(220.0, 250.0)),
+                    Ok("quest-only") => self.view.ask_quest_only_dont_care(true),
                     _ => {}
                 }
             }

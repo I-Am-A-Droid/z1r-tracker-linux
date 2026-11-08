@@ -365,6 +365,14 @@ impl View {
                     self.show_toast("Timer reset", 2.0);
                 }
             }
+            Action::QuestOnlyDontCare(first) => {
+                if i == 0 {
+                    let (changed, replaced) = self.m.mark_quest_only_dont_care(first);
+                    let which = if first { "first" } else { "second" };
+                    let extra = if replaced > 0 { format!(" ({replaced} marks replaced)") } else { String::new() };
+                    self.show_toast(format!("{changed} {which}-quest-only spots marked Don't Care{extra}"), 4.0);
+                }
+            }
             Action::ResetKeepMaps => {
                 if i == 0 {
                     self.commands.push("ResetKeepMaps");
@@ -492,10 +500,29 @@ impl View {
         } else if i == n + 7 {
             self.confirm("Save, then reset the tracker but keep the maps?", Action::ResetKeepMaps, Pos2::new(W / 2.0, 200.0));
             return;
+        } else if i == n + 8 || i == n + 9 {
+            self.ask_quest_only_dont_care(i == n + 8);
+            return;
         }
         let c = self.options_choices();
         if let Some(p) = &mut self.popup {
             p.choices = c;
+        }
+    }
+
+    /// Asks before marking every first- (or second-) quest-only spot Don't Care.
+    pub fn ask_quest_only_dont_care(&mut self, first: bool) {
+        if self.m.quest != 2 && self.m.quest != 3 {
+            self.show_toast("Only for a mixed-quest overworld", 3.0);
+            return;
+        }
+        let marked = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).filter(|&(x, y)| Tracker::quest_only(first, x, y) && self.m.mark[x][y] >= 0 && self.m.mark[x][y] != DARK_X).count();
+        let (which, sure) = if first { ("First", "Second") } else { ("Second", "First") };
+        let warn = if marked > 0 { format!(" {marked} marked spots will be replaced!") } else { String::new() };
+        let q = format!("Mark all {which} Quest Only spots Don't Care? Can't be undone.");
+        self.confirm(&q, Action::QuestOnlyDontCare(first), Pos2::new(W / 2.0, 200.0));
+        if let Some(pop) = &mut self.popup {
+            pop.choices[0].label = format!("I am certain this is {sure} Quest.{warn}");
         }
     }
 
@@ -907,7 +934,9 @@ impl View {
     }
 
     fn confirm(&mut self, q: &str, action: Action, p: Pos2) {
-        let mut pop = Popup::new(q, 2, 120.0, 30.0, Pos2::new(p.x.min(W - 160.0), p.y + 10.0), action);
+        // wide enough for the question on one line (about 7 px a character at the title's size), at most the window
+        let cw = (q.chars().count() as f32 * 3.6 + 8.0).clamp(120.0, W / 2.0 - 12.0);
+        let mut pop = Popup::new(q, 2, cw, 30.0, Pos2::new(p.x.min(W - cw - 40.0), p.y + 10.0), action);
         pop.choices.push(Choice::new(Icon::None, "Yes", "Yes"));
         pop.choices.push(Choice::new(Icon::None, "No", "No"));
         self.popup = Some(pop);
@@ -931,6 +960,8 @@ impl View {
         v.push(Choice::new(Icon::None, "Overworld picture for the blank map...", "A .png of the whole overworld"));
         v.push(Choice::new(Icon::None, "Hide map tiles until Zelda is rescued...", "Shown like don't care"));
         v.push(Choice::new(Icon::None, "Reset the tracker, keep the maps (groundhog / routers / 4+4)...", "Saves first; removes inventory but keeps the maps"));
+        v.push(Choice::new(Icon::None, "Mixed quest: mark all First Quest Only spots Don't Care...", "I am certain this is Second Quest"));
+        v.push(Choice::new(Icon::None, "Mixed quest: mark all Second Quest Only spots Don't Care...", "I am certain this is First Quest"));
         v
     }
 

@@ -270,6 +270,34 @@ impl Tracker {
         }
     }
 
+    /// A spot that only the first quest uses (OverworldData.owMapSquaresFirstQuestOnly: not always-empty in the first
+    /// quest but always-empty in the second), or with `first == false` only the second quest
+    /// (owMapSquaresSecondQuestOnly).
+    pub fn quest_only(first: bool, x: usize, y: usize) -> bool {
+        let (e1, e2) = (at(&ALWAYS_EMPTY_1Q, x, y), at(&ALWAYS_EMPTY_2Q, x, y));
+        if first { !e1 && e2 } else { e1 && !e2 }
+    }
+
+    /// The original's "Mark all First (Second) Quest Only spots as Don't Care" (OverworldItemGridUI.fs, the FQ/SQ...
+    /// pop-up, mixed overworlds only): every such spot is set to don't care, overwriting any mark on it. Returns how
+    /// many spots changed and how many of those had a mark that was replaced.
+    pub fn mark_quest_only_dont_care(&mut self, first: bool) -> (usize, usize) {
+        let (mut changed, mut replaced) = (0, 0);
+        for x in 0..16 {
+            for y in 0..8 {
+                if Self::quest_only(first, x, y) && self.mark[x][y] != crate::data::DARK_X {
+                    if self.mark[x][y] >= 0 {
+                        replaced += 1;
+                    }
+                    self.mark[x][y] = crate::data::DARK_X;
+                    self.extra[x][y] = 0;
+                    changed += 1;
+                }
+            }
+        }
+        (changed, replaced)
+    }
+
     /// The original's "Reset the TRACKER (remove inventory but preserve maps) for groundhog/routers/4+4 purposes"
     /// (OverworldItemGridUI.fs, resetTrackerButton; the caller saves first): triforces removed; every item box not
     /// had (skipped ones stay skipped); progress items and Take Any hearts cleared (PlayerProgressAndTakeAnyHearts
@@ -1019,6 +1047,23 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn quest_only_spots_become_dont_care() {
+        let firsts: Vec<(usize, usize)> = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).filter(|&(x, y)| Tracker::quest_only(true, x, y)).collect();
+        let seconds: Vec<(usize, usize)> = (0..16).flat_map(|x| (0..8).map(move |y| (x, y))).filter(|&(x, y)| Tracker::quest_only(false, x, y)).collect();
+        assert!(!firsts.is_empty() && !seconds.is_empty());
+        assert!(firsts.iter().all(|p| !seconds.contains(p)));
+        let mut t = Tracker::new();
+        t.reset(2); // mixed (first-quest map)
+        let (x, y) = firsts[0];
+        t.mark[x][y] = 0; // a mark that will be replaced
+        let (changed, replaced) = t.mark_quest_only_dont_care(true);
+        assert_eq!(changed, firsts.len());
+        assert_eq!(replaced, 1);
+        assert!(firsts.iter().all(|&(x, y)| t.mark[x][y] == DARK_X));
+        assert!(seconds.iter().all(|&(x, y)| t.mark[x][y] != DARK_X));
     }
 
     #[test]

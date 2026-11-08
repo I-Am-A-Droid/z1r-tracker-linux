@@ -822,3 +822,21 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
   (`art::OVERWORLD_MAPS`), `Assets::map_screen` picks the chosen overworld's, and the blank map shows the sand map
   when no picture of the person's own is chosen. The magnifier's enlarged pictures are first-quest only, so for the
   other overworlds it enlarges that overworld's own screen instead.
+
+## Mixed quest: first/second-quest-only spots (checked 2026-11-08)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "vanilla_strip": 0 matches (a .NET user
+string), native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rules are from the source beside 1.2.3
+(OverworldData.fs, OverworldItemGridUI.fs), whose texts are in 2.1.0.
+- Always-empty screens: the rebuild's first- and second-quest tables equal owMapSquaresFirstQuestAlwaysEmpty /
+  SecondQuestAlwaysEmpty; mixed overworlds use owMapSquaresMixedQuestAlwaysEmpty = empty in both (as the rebuild
+  does); the blank overworld has none.
+- owMapSquaresFirstQuestOnly = not always-empty in the first quest but always-empty in the second;
+  owMapSquaresSecondQuestOnly = the reverse.
+- The "FQ/SQ..." pop-up ("Warning! These actions cannot be undone! Don't click unless you are sure!"), for mixed
+  overworlds: "Mark all First Quest Only spots as Don't Care. I am certain this is Second Quest." and the same for the
+  Second Quest; each sets every such spot to DARK_X with AttemptToSet, replacing any mark, and its button is red when
+  some of those spots are already marked (else yellow).
+- Applied: Options > "Mixed quest: mark all First (Second) Quest Only spots Don't Care..." with a confirmation that
+  says how many marked spots would be replaced (`Tracker::quest_only`, `Tracker::mark_quest_only_dont_care`, tested);
+  refused on non-mixed overworlds. The confirmation box now sizes itself to its question. (Not rebuilt: the HFQ/HSQ
+  check boxes that only shade those spots.)

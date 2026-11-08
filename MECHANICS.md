@@ -976,3 +976,20 @@ formulas from Cargo.toml's version (so the version is set in one place), the tex
 clicking it opens the About box (`data::about_body`, a modal with 0.5 sunglasses like the Stream window) with "Go to
 website" and "Ok". Rebuild-only: the About text ends with the date and time this copy was built (build.rs sets
 `Z1R_BUILD_DATE`), so an old AppImage or installer can be told from a new one (tested).
+
+## Windows program resources (checked 2026-11-08)
+
+Z1R_WPF.exe's PE resources (its native entry point 0x792d6e is only the `_CorExeMain` stub):
+- RT_GROUP_ICON 32512 (RVA 0x399078, 76 bytes) with RT_ICON 1–5: 16 × 16, 24 × 24, 32 × 32 and 48 × 48 at 32 bits
+  and 64 × 64 at 4 bits (1128, 2440, 4264, 9640 and 2664 bytes; RVAs 0x394180, 0x3945f8, 0x394f90, 0x396048,
+  0x398600). The same five pictures are in the original's `images/icon_32512_0.ico`.
+- RT_VERSION 1 (RVA 0x3990d4): FileVersion 2.1.0.2, ProductVersion 2.1.0.0, OriginalFilename Z1R_WPF.exe.
+- RT_MANIFEST 1 (RVA 0x39929c): `requestedExecutionLevel level="asInvoker" uiAccess="false"` (runs with the
+  user's own rights; no administrator prompt).
+The rebuild's z1r-tracker.exe had no resources at all (no icon in Explorer, nothing under Properties → Details).
+build.rs now writes a .res file for Windows builds and links it (Microsoft's link.exe and Zig's lld both accept a
+.res input): icon group 32512 from `windows/z1r-tracker.ico` (a copy of the original's icon file; checked: the five
+RT_ICON entries and the group come out byte-for-byte the same as the original's), RT_VERSION with FileVersion and
+ProductVersion = Cargo.toml's version plus ".0" (2.1.0.0), FileDescription "Z-Tracker for Zelda 1 Randomizer",
+ProductName "Z-Tracker", OriginalFilename "z1r-tracker.exe", and the same asInvoker manifest. The installer uses
+the same icon (`SetupIconFile`).

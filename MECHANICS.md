@@ -993,3 +993,10 @@ RT_ICON entries and the group come out byte-for-byte the same as the original's)
 ProductVersion = Cargo.toml's version plus ".0" (2.1.0.0), FileDescription "Z-Tracker for Zelda 1 Randomizer",
 ProductName "Z-Tracker", OriginalFilename "z1r-tracker.exe", and the same asInvoker manifest. The installer uses
 the same icon (`SetupIconFile`).
+
+Icon picture (asked for, 2026-11-08): the Windows icon is now the tracker's own logo instead of the original's, the
+same picture as the AppImage's icon (`linux/Z-Tracker.AppDir/z1r-tracker.png`, 128 × 128, made by `--write-icon`
+from `art::logo`). It is kept as `windows/z1r-tracker.png`, and `windows/z1r-tracker.ico` is made from it with 16,
+24, 32, 48, 64 and 128 pixel pictures (PNG-compressed, which Windows Vista and later read). It is still icon group
+32512, so the rest of the rule above is unchanged; checked that the exe and the installer contain all six pictures
+and no longer the original's.

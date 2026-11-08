@@ -23,7 +23,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName=Z-Tracker for Zelda 1 Randomizer
 UninstallDisplayIcon={app}\z1r-tracker.exe
-; the original's icon (Z1R_WPF.exe icon group 32512), also built into z1r-tracker.exe by build.rs
+; the tracker's own logo (windows/z1r-tracker.ico, made from z1r-tracker.png, the AppImage's icon), also built into z1r-tracker.exe by build.rs
 SetupIconFile=z1r-tracker.ico
 
 [Tasks]

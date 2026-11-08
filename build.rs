@@ -106,7 +106,7 @@ fn ver_node(key: &str, value: &[u8], value_len: u16, text: bool, children: &[Vec
     v
 }
 
-/// Icon group 32512 from an .ico file (as the original's), version information and the asInvoker manifest.
+/// Icon group 32512 (the original's group number) from an .ico file, version information and the asInvoker manifest.
 fn windows_res(ico: &[u8], version: [u16; 4]) -> Vec<u8> {
     let mut out = vec![];
     res_entry(&mut out, 0, 0, 0, &[]); // the empty first entry every .res file starts with

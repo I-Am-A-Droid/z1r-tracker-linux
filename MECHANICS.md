@@ -349,7 +349,7 @@ Options entry are gone. The sheets keep the original's names, sizes and order (f
 number still holds:
 - `icons7x7.png` 32 items of 7×7; `icons3x7.png` 8 shop items of 3×7; `icons10x10.png` 10 pictures (triforce, Take Any
   hearts, save disk …); `icons8x8.png` a heart.
-- `zelda_bosses16x16.png` 32 monsters and `zelda_items16x16.png` 8 floor drops, drawn as 8×8 patterns at twice the size.
+- `zelda_bosses16x16.png` 32 monsters: the original sprite sheet itself since 2026-11-08 (see "Monster sprites" below); `zelda_items16x16.png` 8 floor drops, drawn as 8×8 patterns at twice the size.
 - `s_icon_overworld_strip39.png` 39 map markers of 16×11: a coloured box with letters from a 3×5 alphabet and the item
   pictures above; `s_btn_tr_dungeon_num_strip18.png` level numbers; `new_icons13x9.png` 42 room pictures × 2 (done).
 - `s_map_overworld_strip8.png`: the overworld as 16×8 screens of 16×11 pixels, coloured from a table of which ground
@@ -924,3 +924,17 @@ tracker behind it takes no clicks, wheel or keys (main.rs skips `View::handle_in
 makes the notes box inert), and is darkened with black at opacity 0.5 (`MODAL_SUNGLASSES_OPACITY`). The rebuild's
 own item and marking pop-ups don't dim the tracker yet. Checked 2026-11-08 by running the
 tracker: `/frame.jpg` answered in 0.07 s (an 845 × 1064 JPEG) and `/stream.mjpg` gave 29 frames in 3 s.
+
+## Monster sprites (asked for; checked 2026-11-08)
+
+The monster pictures are now the original Zelda sprites from the original tracker's own sheet,
+`Z1R_WPF/icons/zelda_bosses16x16.png` (512 × 16: 32 sprites of 16 × 16, solid black background), copied to
+`assets/monsters` and built into the program. They are sliced as the original's Graphics.fs does (the
+`digdogger_bmp … other_monster2` tuple): each sprite goes on its own 18 × 18 bitmap whose one-pixel edge is
+`bg16x16` = RGB(45, 50, 0) and whose inside is black, and every sprite pixel that isn't black is copied in at (1,1).
+The order is unchanged (0 Digdogger, 1 Gleeok, 2 Gohma, 3 Manhandla, 4 Wizzrobe, 5 Patra, 6 Dodongo, 7 red bubble,
+8 blue bubble, 9 Darknut, 10 other, 11 old man, 12 Vire, … 29 rupee boss, 30 traps, 31 other 2), so `MONSTER_ICON`
+still applies. `art::original_monsters` builds the sheet at 4 pixels per unit with each sprite pixel a sharp 4 × 4
+block, and the room corners and the monster picker draw whole 18-unit cells (`art::MONSTER_CELL`). The drawn 8 × 8
+patterns are kept only as a fallback if the sheet can't be read (tested: border, black inside and sprite pixels
+match the sheet).

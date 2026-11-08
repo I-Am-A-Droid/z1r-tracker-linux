@@ -682,6 +682,67 @@ fn monster_img(i: usize) -> Img {
     img
 }
 
+/// Each monster picture is a cell this many units wide and high: the original puts every 16x16 sprite on an 18x18
+/// square, black inside a one-pixel border (Graphics.fs, the zelda_bosses16x16.png slicing).
+pub const MONSTER_CELL: usize = 18;
+/// The original's border colour round each monster (Graphics.bg16x16 = FromArgb(45, 50, 0)).
+const MONSTER_BORDER: [u8; 3] = [45, 50, 0];
+/// The original Zelda monster sprites: the original tracker's zelda_bosses16x16.png (32 sprites of 16x16, in the
+/// order of MONSTERS8), copied into assets/monsters and built into the program.
+const ORIGINAL_MONSTERS: &[u8] = include_bytes!("../assets/monsters/zelda_bosses16x16.png");
+/// The monster sheet is made this many pixels per unit, each sprite pixel a sharp block, so it stays crisp when
+/// smoothly scaled to the window.
+const MONSTER_SCALE: usize = 4;
+
+/// The original's monster pictures, sliced as it does: for sprite i, an 18x18 cell with a MONSTER_BORDER edge, black
+/// inside, and every pixel of sprite i that isn't black drawn at (1,1). None if the sheet can't be read.
+fn original_monsters() -> Option<ColorImage> {
+    let sheet = image::load_from_memory_with_format(ORIGINAL_MONSTERS, image::ImageFormat::Png).ok()?.to_rgba8();
+    let n = sheet.width() as usize / 16;
+    if n < 32 || sheet.height() < 16 {
+        return None;
+    }
+    let (s, cell) = (MONSTER_SCALE, MONSTER_CELL);
+    let (w, h) = (n * cell * s, cell * s);
+    let mut rgba = vec![0u8; w * h * 4];
+    for i in 0..n {
+        for cy in 0..cell {
+            for cx in 0..cell {
+                let border = cx == 0 || cy == 0 || cx == cell - 1 || cy == cell - 1;
+                let mut c = if border { MONSTER_BORDER } else { [0, 0, 0] };
+                if !border {
+                    let p = sheet.get_pixel((i * 16 + cx - 1) as u32, (cy - 1) as u32).0;
+                    if p[3] > 0 && p[..3] != [0, 0, 0] {
+                        c = [p[0], p[1], p[2]];
+                    }
+                }
+                for y in cy * s..(cy + 1) * s {
+                    for x in (i * cell + cx) * s..(i * cell + cx + 1) * s {
+                        let k = (y * w + x) * 4;
+                        rgba[k..k + 4].copy_from_slice(&[c[0], c[1], c[2], 255]);
+                    }
+                }
+            }
+        }
+    }
+    Some(ColorImage::from_rgba_unmultiplied([w, h], &rgba))
+}
+
+/// The tracker's own drawn monsters in the same 18-unit cells (only if the original sheet can't be read).
+fn drawn_monsters() -> ColorImage {
+    let px = MONSTER_CELL * 2;
+    strip(
+        (0..32)
+            .map(|i| {
+                let mut cell = Img::new(px, px);
+                cell.put(&monster_img(i), 2, 2);
+                cell
+            })
+            .collect(),
+    )
+    .image()
+}
+
 /// "zelda_items16x16.png": what lies on a dungeon room's floor. 0 triforce, 1 heart container, 2 bombs, 3 key,
 /// 4 rupee, 5 map, 6 compass, 7 another key item (8-12 unused). 32 pixels each.
 fn floor_img(i: usize) -> Img {
@@ -1276,7 +1337,10 @@ pub fn sheets() -> Vec<(&'static str, ColorImage, f32, bool)> {
         ("icons3x7.png", shop3.image(), 4.0, false),
         ("icons8x8.png", heart8.image(), 4.0, false),
         ("icons10x10.png", strip((0..10).map(icon10).collect()).image(), 4.0, false),
-        ("zelda_bosses16x16.png", strip((0..32).map(monster_img).collect()).image(), 2.0, false),
+        match original_monsters() {
+            Some(img) => ("zelda_bosses16x16.png", img, MONSTER_SCALE as f32, false),
+            None => ("zelda_bosses16x16.png", drawn_monsters(), 2.0, false),
+        },
         ("zelda_items16x16.png", strip((0..13).map(floor_img).collect()).image(), 2.0, false),
         ("s_icon_overworld_strip39.png", markers.clone(), 4.0, false),
         (GREY_MARKERS, greyscale(&markers), 4.0, false),
@@ -1464,7 +1528,7 @@ mod tests {
             ("icons3x7.png", [24, 7]),
             ("icons8x8.png", [16, 8]),
             ("icons10x10.png", [100, 10]),
-            ("zelda_bosses16x16.png", [512, 16]),
+            ("zelda_bosses16x16.png", [32 * 18, 18]), // 18x18 cells: the original sprite inside its border
             ("zelda_items16x16.png", [208, 16]),
             ("s_icon_overworld_strip39.png", [624, 11]),
             ("s_btn_tr_dungeon_num_strip18.png", [162, 9]),
@@ -1477,6 +1541,24 @@ mod tests {
             let s = sheets.iter().find(|s| s.0 == name).unwrap_or_else(|| panic!("{name} missing"));
             let units = [(s.1.size[0] as f32 / s.2) as usize, (s.1.size[1] as f32 / s.2) as usize];
             assert_eq!(units, size, "{name}");
+        }
+    }
+
+    #[test]
+    fn monsters_are_the_original_sprites_in_their_border() {
+        let img = super::original_monsters().expect("the original sheet reads");
+        let s = super::MONSTER_SCALE;
+        let at = |x: usize, y: usize| img.pixels[y * s * img.size[0] + x * s].to_srgba_unmultiplied();
+        assert_eq!(at(0, 0), [45, 50, 0, 255]); // the border
+        assert_eq!(at(18 * 31 + 17, 17), [45, 50, 0, 255]);
+        // inside: the sprite's own pixels at (1,1), black where the sprite is black
+        let sheet = image::load_from_memory(super::ORIGINAL_MONSTERS).unwrap().to_rgba8();
+        for i in [0usize, 13, 26] {
+            for (x, y) in [(3usize, 4usize), (8, 8), (12, 2)] {
+                let p = sheet.get_pixel((i * 16 + x) as u32, y as u32).0;
+                let want = if p[..3] == [0, 0, 0] { [0, 0, 0, 255] } else { [p[0], p[1], p[2], 255] };
+                assert_eq!(at(i * 18 + x + 1, y + 1), want, "monster {i} at {x},{y}");
+            }
         }
     }
 

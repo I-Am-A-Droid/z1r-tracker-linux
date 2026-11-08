@@ -727,6 +727,13 @@ impl eframe::App for TrackerApp {
                     Ok("quest-only") => self.view.ask_quest_only_dont_care(true),
                     Ok("reset") => self.view.open_reset_menu(),
                     Ok("stream") => self.view.commands.push("Stream"),
+                    Ok("monsters") => {
+                        // a few rooms with monsters, and the monster picker open
+                        for (i, m) in [1usize, 3, 9, 14, 18, 25, 27].into_iter().enumerate() {
+                            self.view.m.maps[0].rooms[i][7].monster = m;
+                        }
+                        self.view.open_monster(3, 4, egui::Pos2::new(200.0, 560.0));
+                    }
                     _ => {}
                 }
             }

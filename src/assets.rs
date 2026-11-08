@@ -98,7 +98,9 @@ impl Assets {
         self.draw(p, "icons10x10.png", i as f32 * 10.0, 0.0, 10.0, 10.0, dst, shade, false)
     }
     pub fn boss16(&mut self, p: &egui::Painter, i: i32, dst: Rect) -> bool {
-        i >= 0 && self.draw(p, "zelda_bosses16x16.png", i as f32 * 16.0, 0.0, 16.0, 16.0, dst, 1.0, false)
+        // one 18x18 cell each: the original sprite on black inside its border
+        let c = crate::art::MONSTER_CELL as f32;
+        i >= 0 && self.draw(p, "zelda_bosses16x16.png", i as f32 * c, 0.0, c, c, dst, 1.0, false)
     }
     pub fn zitem16(&mut self, p: &egui::Painter, i: i32, dst: Rect, shade: f32) -> bool {
         i >= 0 && self.draw(p, "zelda_items16x16.png", i as f32 * 16.0, 0.0, 16.0, 16.0, dst, shade, false)

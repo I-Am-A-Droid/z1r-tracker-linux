@@ -880,7 +880,7 @@ impl View {
         self.popup = Some(pop);
     }
 
-    fn open_monster(&mut self, x: usize, y: usize, p: Pos2) {
+    pub fn open_monster(&mut self, x: usize, y: usize, p: Pos2) {
         let cur = self.m.maps[self.m.tab].rooms[x][y].monster;
         let mut pop = Popup::new("Monster in this room", 8, 40.0, 40.0, Pos2::new(p.x, (p.y + 20.0).min(H - 200.0)), Action::Monster(x, y));
         for i in 0..MONSTERS.len() {

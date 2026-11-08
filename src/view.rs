@@ -1699,7 +1699,8 @@ impl View {
                 }
                 Icon::Boss(i) => {
                     let d = dst(32.0, 32.0);
-                    i >= 0 && self.assets.draw(p, "zelda_bosses16x16.png", i as f32 * 16.0, 0.0, 16.0, 16.0, d, shade, false)
+                    let c = crate::art::MONSTER_CELL as f32;
+                    i >= 0 && self.assets.draw(p, "zelda_bosses16x16.png", i as f32 * c, 0.0, c, c, d, shade, false)
                 }
                 Icon::Zitem(i) => {
                     let d = dst(32.0, 32.0);

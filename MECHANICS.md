@@ -806,3 +806,19 @@ native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the rule is fro
 - Applied: Options > "Reset the tracker, keep the maps (groundhog / routers / 4+4)…" with a confirmation; it saves
   first and resets only if the save worked (`Tracker::reset_keep_maps`, tested; the coast reminder restarts). Map
   marks, dungeon maps, blockers, hints, notes and the timer are kept.
+
+## Each overworld choice has its own map (asked for; checked 2026-11-08)
+- `<StartupCode$Z1R_WPF>.$Graphics::.cctor` (token 0x06002d4c, RVA 0xa0e98) loads the overworld picture from the
+  resource `s_map_overworld_vanilla_strip8.png` (a list of one file, picked at random). It is 1280 x 88: five maps of
+  256 x 88 side by side — first quest, second quest, mixed (first-quest map), mixed (second-quest map), blank (plain
+  sand). The second-quest map differs from the first in 140 pixels (its caves and secret spots); the mixed maps in 61.
+- `Graphics/overworldMapBMPs@842::Invoke` (token 0x06002d28, RVA 0xa0850): screen (x, y) of map n is 48 x 33 with
+  pixel (px, py) = strip(256·n + (48·x + px) div 3, (33·y + py) div 3), i.e. the 16 x 11 piece enlarged 3 times.
+  These are what the original caches in its Overworld folder (only the maps it has shown, so the person's folder held
+  only the first quest).
+- Applied: the screens of maps 1-4 were made with that rule from the person's copy of the original (the rule
+  reproduces all 128 first-quest screens in the Overworld folder exactly) and added to assets/overworld as
+  quest1..quest4_xXX_yY.png, built into the program. The map sheet now holds all five maps
+  (`art::OVERWORLD_MAPS`), `Assets::map_screen` picks the chosen overworld's, and the blank map shows the sand map
+  when no picture of the person's own is chosen. The magnifier's enlarged pictures are first-quest only, so for the
+  other overworlds it enlarges that overworld's own screen instead.

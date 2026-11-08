@@ -9,9 +9,9 @@ It reads and writes the same `zt-save-*.json` files as the original, so saves mo
 
 ## Pictures
 
-The overworld map and the magnifier are made from the 128 map screen pictures in `assets/overworld` and the 128
-enlarged ones in `assets/magnifier` (taken from the original Z-Tracker's `Overworld` and `Magnifier` folders, first
-quest; the other overworld choices use the same pictures). They are built into the program, as are the original's two vanilla dungeon item reference pictures
+The overworld map and the magnifier are made from the map screen pictures in `assets/overworld` (all five overworld
+choices: first quest, second quest, the two mixed maps and the blank map, made as the original makes its `Overworld`
+folder) and the 128 enlarged first-quest ones in `assets/magnifier` (from the original's `Magnifier` folder). They are built into the program, as are the original's two vanilla dungeon item reference pictures
 (`assets/reference`), shown with the Starting Items and Extra Drops panel. Every other picture
 (items, map markers, dungeon rooms, monsters and the logo) is drawn by the program itself, in high detail with smooth
 edges, shading and outlines. It needs no other files when it runs: the original Z-Tracker doesn't have to be

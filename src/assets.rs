@@ -169,8 +169,10 @@ impl Assets {
     }
 
     /// One overworld screen (the map is 16 x 8 screens of 16 x 11 units; all four overworlds share its ground).
-    pub fn map_screen(&mut self, p: &egui::Painter, _quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
-        self.draw(p, "s_map_overworld_strip8.png", x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
+    /// quest: 0 first, 1 second, 2 mixed (first-quest map), 3 mixed (second-quest map), 4 blank.
+    pub fn map_screen(&mut self, p: &egui::Painter, quest: i64, x: usize, y: usize, dst: Rect, shade: f32, mirror: bool) -> bool {
+        let q = quest.clamp(0, crate::art::OVERWORLD_MAPS as i64 - 1) as f32;
+        self.draw(p, "s_map_overworld_strip8.png", q * 256.0 + x as f32 * 16.0, y as f32 * 11.0, 16.0, 11.0, dst, shade, mirror)
     }
 }
 

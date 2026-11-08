@@ -1017,23 +1017,40 @@ include!(concat!(env!("OUT_DIR"), "/overworld_tiles.rs"));
 /// Returns the picture and its pixels per unit.
 fn overworld() -> (Img, usize) {
     let decode = |bytes: &[u8]| image::load_from_memory_with_format(bytes, image::ImageFormat::Png).ok().map(|i| i.to_rgba8());
-    let tiles: Vec<(usize, usize, image::RgbaImage)> = OVERWORLD_TILES
+    let tiles: Vec<(usize, usize, usize, image::RgbaImage)> = OVERWORLD_TILES
         .iter()
-        .filter(|t| t.0 == 0 && t.1 < 16 && t.2 < 8)
-        .filter_map(|&(_, x, y, bytes)| decode(bytes).map(|img| (x, y, img)))
+        .filter(|t| t.0 < OVERWORLD_MAPS && t.1 < 16 && t.2 < 8)
+        .filter_map(|&(q, x, y, bytes)| decode(bytes).map(|img| (q, x, y, img)))
         .collect();
-    let scale = tiles.first().map(|t| t.2.width() as usize / 16).filter(|&s| s > 0).unwrap_or(4);
-    let tiles: Vec<_> = tiles.into_iter().filter(|t| t.2.width() as usize == 16 * scale && t.2.height() as usize == 11 * scale).collect();
-    let mut img = if tiles.len() == 16 * 8 { Img::new(256 * scale, 88 * scale) } else { drawn_overworld(scale) };
-    for (x, y, tile) in &tiles {
+    let scale = tiles.first().map(|t| t.3.width() as usize / 16).filter(|&s| s > 0).unwrap_or(4);
+    let tiles: Vec<_> = tiles.into_iter().filter(|t| t.3.width() as usize == 16 * scale && t.3.height() as usize == 11 * scale).collect();
+    // the five maps side by side; one missing a picture falls back to the tracker's own drawing (or the first quest's)
+    let mut img = Img::new(256 * scale * OVERWORLD_MAPS, 88 * scale);
+    let drawn = drawn_overworld(scale);
+    for q in 0..OVERWORLD_MAPS {
+        let have = tiles.iter().filter(|t| t.0 == q).count();
+        if have < 16 * 8 {
+            for y in 0..drawn.h {
+                for x in 0..drawn.w {
+                    img.px[y * img.w + q * 256 * scale + x] = drawn.px[y * drawn.w + x];
+                }
+            }
+        }
+    }
+    for (q, x, y, tile) in &tiles {
         for (px, py, p) in tile.enumerate_pixels() {
             let [r, g, b, a] = p.0;
-            let i = (y * 11 * scale + py as usize) * img.w + x * 16 * scale + px as usize;
+            let i = (y * 11 * scale + py as usize) * img.w + q * 256 * scale + x * 16 * scale + px as usize;
             img.px[i] = C(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a as f32 / 255.0);
         }
     }
     (img, scale)
 }
+
+/// The map sheet holds the original's five overworlds side by side, in its order (`OverworldData.OWQuest` and
+/// `Graphics.overworldMapBMPs(n)`, which reads 256·n units across): first quest, second quest, mixed (first-quest
+/// map), mixed (second-quest map), blank.
+pub const OVERWORLD_MAPS: usize = 5;
 
 /// "magnifier": the enlarged map screens (assets/magnifier, first quest, 128 x 88 pixels each = 8 pixels per unit),
 /// put together like the map: 16 x 8 screens of 16 x 11 units. None if there are no such pictures.
@@ -1452,7 +1469,7 @@ mod tests {
             ("s_icon_overworld_strip39.png", [624, 11]),
             ("s_btn_tr_dungeon_num_strip18.png", [162, 9]),
             ("new_icons13x9.png", [546, 18]),
-            ("s_map_overworld_strip8.png", [256, 88]),
+            ("s_map_overworld_strip8.png", [256 * 5, 88]), // the five overworlds side by side
             ("ZTlogo64x64.png", [64, 64]),
         ];
         let sheets = super::sheets();
@@ -1485,9 +1502,12 @@ mod tests {
 
     #[test]
     fn the_map_is_made_from_the_overworld_pictures() {
-        assert_eq!(super::OVERWORLD_TILES.len(), 128);
+        assert_eq!(super::OVERWORLD_TILES.len(), 128 * 5);
         let (map, scale) = super::overworld();
-        assert_eq!((scale, map.w, map.h), (3, 768, 264));
+        assert_eq!((scale, map.w, map.h), (3, 768 * 5, 264));
+        // the second quest's map really differs from the first's (its caves and spots)
+        let screen = |q: usize| -> Vec<super::C> { (0..264).flat_map(|y| (0..768).map(move |x| (q, x, y))).map(|(q, x, y)| map.px[y * map.w + q * 768 + x]).collect() };
+        assert_ne!(screen(0), screen(1));
         // every pixel came from a picture (nothing see-through left)
         assert!(map.px.iter().all(|c| c.3 > 0.0));
     }

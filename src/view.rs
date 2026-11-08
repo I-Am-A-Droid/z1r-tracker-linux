@@ -780,7 +780,9 @@ impl View {
                 // overworldMapBMPs uses alternativeOverworldMapFilename only for quest 4)
                 let drawn = if self.m.quest == 4 {
                     self.assets.follow_custom_map(&self.m.alt_map_file);
+                    // without a picture of the person's own, the original's blank map (plain sand)
                     self.assets.custom_map_screen(p, x, y, self.r(r), shade, self.m.mirror)
+                        || self.assets.map_screen(p, 4, x, y, self.r(r), shade, self.m.mirror)
                 } else {
                     self.assets.map_screen(p, self.m.quest, x, y, self.r(r), shade, self.m.mirror)
                 };
@@ -1178,10 +1180,13 @@ impl View {
         self.fill(p, area, Color32::BLACK);
         self.stroke(p, area, 1.0, Color32::GRAY);
         let mirror = self.m.mirror;
+        // the enlarged pictures are of the first quest's map; other overworlds show their own screen enlarged
         let drawn = if self.m.quest == 4 {
-            self.assets.custom_map_screen(p, x, y, self.r(pic), 1.0, mirror)
+            self.assets.custom_map_screen(p, x, y, self.r(pic), 1.0, mirror) || self.assets.map_screen(p, 4, x, y, self.r(pic), 1.0, mirror)
+        } else if self.m.quest == 0 {
+            self.assets.magnifier_screen(p, x, y, self.r(pic), mirror) || self.assets.map_screen(p, 0, x, y, self.r(pic), 1.0, mirror)
         } else {
-            self.assets.magnifier_screen(p, x, y, self.r(pic), mirror) || self.assets.map_screen(p, self.m.quest, x, y, self.r(pic), 1.0, mirror)
+            self.assets.map_screen(p, self.m.quest, x, y, self.r(pic), 1.0, mirror)
         };
         if !drawn {
             self.text_c(p, pic, 14.0, Color32::GRAY, "no picture of this screen");

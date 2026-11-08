@@ -9,6 +9,7 @@ mod data;
 mod input;
 mod model;
 mod platform;
+mod crash;
 mod settings;
 mod stream;
 mod view;
@@ -89,6 +90,8 @@ fn main() {
     if opts.screenshot.is_none() {
         platform::write_shortcut();
     }
+    // the crash log, as the original's unhandled-exception handlers
+    crash::install();
     let assets = Assets::new();
     let settings = Settings::load();
     let hotkeys = HotKeys::load();
@@ -264,14 +267,18 @@ struct TrackerApp {
     stream_error: Option<String>,
     /// the About box, opened by the version button
     show_about: bool,
+    /// the original's crash-recovery question, asked at start after a recent crash
+    show_recovery: bool,
 }
 
 impl TrackerApp {
     fn new(view: View, screenshot: Option<PathBuf>) -> Self {
+        let show_recovery = screenshot.is_none() && crash::should_offer_recovery(&save_dir().join("zt-save-zz-autosave.json"));
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
             shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_custom_map: false, custom_map_text: String::new(), zoom_set: false, frames_seen: 0,
             placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(), show_stream: false, stream_adapters: vec![], stream_error: None, show_about: false,
+            show_recovery,
         }
     }
 
@@ -619,9 +626,52 @@ impl TrackerApp {
         }
     }
 
+    /// The original's crash-recovery question (Program/MyWindow::.ctor; text in crash::RECOVERY_TEXT): load the
+    /// autosave, or not. Either answer ends the crash log so it isn't asked again.
+    fn recovery_window(&mut self, ctx: &egui::Context) {
+        if !self.show_recovery {
+            return;
+        }
+        let mut answer = None;
+        let sunglasses = Color32::from_black_alpha((MODAL_SUNGLASSES_OPACITY * 255.0).round() as u8);
+        egui::Modal::new(egui::Id::unique("crash_recovery")).backdrop_color(sunglasses).show(ctx, |ui| {
+            ui.set_width(360.0);
+            ui.heading(data::PROGRAM_NAME);
+            ui.separator();
+            for line in crash::RECOVERY_TEXT.lines() {
+                ui.label(line);
+            }
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                if ui.button(crash::RECOVERY_YES).clicked() {
+                    answer = Some(true);
+                }
+                if ui.button(crash::RECOVERY_NO).clicked() {
+                    answer = Some(false);
+                }
+            });
+        });
+        match answer {
+            Some(true) => {
+                self.show_recovery = false;
+                match load_file(&mut self.view, &save_dir().join("zt-save-zz-autosave.json")) {
+                    Ok(()) => crash::finish_crash_info(crash::RELOADED),
+                    Err(e) => self.view.show_toast(format!("Could not load the autosave: {e}"), 6.0),
+                }
+                self.last_autosave_minute = self.view.m.seconds / 60;
+            }
+            Some(false) => {
+                self.show_recovery = false;
+                crash::finish_crash_info(crash::DECLINED);
+            }
+            None => {}
+        }
+    }
+
     fn windows(&mut self, ctx: &egui::Context) {
         self.stream_window(ctx);
         self.about_window(ctx);
+        self.recovery_window(ctx);
         let mut open = self.show_custom_map;
         let mut close = false;
         egui::Window::new("Overworld picture for the blank map").open(&mut open).default_width(520.0).show(ctx, |ui| {
@@ -710,6 +760,9 @@ impl eframe::App for TrackerApp {
             }
         }
         self.frames_seen += 1;
+        if self.frames_seen == 2 {
+            crash::got_thru_startup();
+        }
         self.tick();
         self.remember_window_position(&ctx);
 
@@ -767,6 +820,7 @@ impl eframe::App for TrackerApp {
                     Ok("reset") => self.view.open_reset_menu(),
                     Ok("stream") => self.view.commands.push("Stream"),
                     Ok("about") => self.view.commands.push("About"),
+                    Ok("recovery") => self.show_recovery = true,
                     Ok("monsters") => {
                         // rooms with monsters and floor drops (the bottom row done, the one above not), and with
                         // Z1R_SCREENSHOT_PICKER=1 the monster picker open
@@ -794,7 +848,7 @@ impl eframe::App for TrackerApp {
         let nr = self.view.notes_rect().translate(origin);
         let popup_open = self.view.popup.is_some();
         // while a blocking window (the Stream window) is open, the tracker takes no clicks, wheel or keys
-        let blocked = self.show_stream || self.show_about;
+        let blocked = self.show_stream || self.show_about || self.show_recovery;
         let notes = ui.put(
             nr,
             egui::TextEdit::multiline(&mut self.view.m.notes)

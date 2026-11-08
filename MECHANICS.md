@@ -1014,3 +1014,29 @@ directory and icon location). Its target is z1r-tracker.exe and, since the rebui
 program rather than kept in an icons folder, the icon location is the program itself, picture 0. Tested: the
 layout (unit test), and under Wine the program wrote ZTracker.lnk beside itself and opening that shortcut through
 Wine's shell started the tracker.
+
+## Crash log and crash recovery (checked 2026-11-08)
+
+From the shipped Z1R_WPF.exe (its native entry point 0x792d6e is only the `_CorExeMain` stub) and the matching
+source (Program.fs):
+- File `Z1R_Tracker_crash_log.txt` in the program's folder (`Program/MyWindow::.ctor` IL_008f; also
+  `Program.runTheApp@1482`, token 0x06000023, RVA 0x480c). Times are `yyyy-MM-dd-HH:mm:ss`.
+- `logCrashInfo@238` (token 0x0600000a, RVA 0x25f8): the first line of a report is preceded by
+  `"\n\nBEGIN CRASH LOG -- %s -- %s\n"` (ProgramNameString, now); each line is appended with "\n".
+- `finishCrashInfoImpl@246` (token 0x0600000b, RVA 0x26b4): appends `"END CRASH LOG\n%s\n%s"` (now, then `extra`, or
+  `"(during startup)\n"` if start-up never finished, which on purpose stops the next start from offering recovery).
+- Unhandled errors log "An unhandled exception from UI thread:" or "…from background thread:" and the error, then
+  finish; if start-up had finished, the console adds "If Z-Tracker crashed while you were playing, you might be able
+  to restore the most recent auto-save, by restarting Z-Tracker right now."
+- At start (`Program/MyWindow::.ctor`, RVA 0x50f0): if the log has more than one line, its last line parses as a
+  time, that time is less than `TimeSpan.FromMinutes(10.)` ago (IL_170c `ldc.r8 10`), and the autosave exists and was
+  written after crash time − `FromMinutes(2.)` (IL_1742 `ldc.r8 2`), a modal asks "It appears that Z-Tracker
+  recently crashed.\n\nThere is a recent auto-save from a\nminute or so before the crash.\n\nWould you like to try
+  loading the auto-save?" with "Yes, load auto-save" and "No". Yes loads the autosave and finishes the log with
+  "successful reload of autosave"; No leads to "prompted for crash recovery, user chose not to, successfully
+  started". Either way the log no longer ends in a time, so the question isn't asked again.
+The rebuild had none of this. Now `crash.rs` does the same: a panic hook writes the report with the same lines and
+format (`crash::install`, `log_crash_info`, `finish_crash_info`); start-up counts as finished once the window has
+drawn; at start `crash::should_offer_recovery` applies the 10- and 2-minute rules (`offer_recovery`, tested) and
+the question appears as a modal with the original's text and buttons. The log is kept beside the saves (the
+original keeps both in its own folder; in the original's folder the rebuild does too).

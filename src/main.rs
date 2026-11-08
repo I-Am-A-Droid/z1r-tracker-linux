@@ -370,6 +370,21 @@ impl TrackerApp {
                 }
             }
             "OpenSaves" => open_path(&save_dir()),
+            "StartOver" => {
+                // a manual save first, so the discarded work can be loaded again, then the program's starting state:
+                // a fresh tracker waiting for the overworld choice (settings and hot keys are kept)
+                let name = format!("zt-save-manual-{}.json", Self::stamp());
+                if self.view.m.started {
+                    self.save_to(&save_dir().join(&name), false);
+                }
+                self.view.m = Tracker::new();
+                self.view.paused = false;
+                self.view.popup = None;
+                self.view.restart_reminders();
+                self.last_autosave_minute = -1;
+                let note = if save_dir().join(&name).exists() { format!("Started over. Your previous work was saved as {name}.") } else { "Started over.".to_string() };
+                self.view.show_toast(note, 6.0);
+            }
             "ResetKeepMaps" => {
                 // as the original: a hard save first, then the reset (OverworldItemGridUI.fs resetTrackerButton)
                 let name = format!("zt-save-manual-{}.json", Self::stamp());
@@ -539,6 +554,7 @@ impl eframe::App for TrackerApp {
                     Ok("recorder") => self.view.commands.push("RecorderSettingsAtLegend"),
                     Ok("mark") => self.view.open_mark_picker(4, 3, egui::Pos2::new(220.0, 250.0)),
                     Ok("quest-only") => self.view.ask_quest_only_dont_care(true),
+                    Ok("reset") => self.view.open_reset_menu(),
                     _ => {}
                 }
             }

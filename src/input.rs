@@ -237,6 +237,7 @@ impl View {
                 "Options" => self.open_options(),
                 "Hints" => self.open_hints(),
                 "RecorderSettings" => self.open_recorder_settings(p),
+                "Reset" => self.open_reset_menu(),
                 _ => self.commands.push(name),
             },
             Target::Tab(i) => self.m.tab = i,
@@ -380,8 +381,17 @@ impl View {
             }
             Action::StartOver => {
                 if i == 0 {
-                    self.m.started = false;
-                    self.paused = false;
+                    // saved first, then everything back to how the program starts (main.rs "StartOver")
+                    self.commands.push("StartOver");
+                }
+            }
+            Action::ResetMenu => {
+                let at = Pos2::new(W / 2.0, 200.0);
+                match i {
+                    1 => self.confirm("Reset the TIMER to 0:00:00?", Action::ResetTimer, at),
+                    2 => self.confirm("Save, then reset the tracker but keep the maps?", Action::ResetKeepMaps, at),
+                    3 => self.confirm("Start over: clear everything and go back to the start?", Action::StartOver, at),
+                    _ => {}
                 }
             }
             Action::Options => self.choose_option(i),
@@ -511,6 +521,19 @@ impl View {
     }
 
     /// Asks before marking every first- (or second-) quest-only spot Don't Care.
+    /// The reset choices, as the original's "Pause/Reset timer" pop-up offers them (OverworldItemGridUI.fs:
+    /// resume, reset the TIMER, reset the TRACKER keeping the maps, discard all the work and start again).
+    pub fn open_reset_menu(&mut self) {
+        let mut pop = Popup::new("Reset", 1, 520.0, 28.0, Pos2::new(W / 2.0, 100.0), Action::ResetMenu);
+        pop.choices = vec![
+            Choice::new(Icon::None, "Resume (change nothing)", "Close this"),
+            Choice::new(Icon::None, "Reset the TIMER to 0:00:00", "Only the timer"),
+            Choice::new(Icon::None, "Reset the TRACKER: remove inventory but keep the maps", "For groundhog / routers / 4+4; saved first"),
+            Choice::new(Icon::None, "Start over: everything back to how Z-Tracker starts", "Clears all marks, items, maps, notes and the timer; your work is saved first"),
+        ];
+        self.popup = Some(pop);
+    }
+
     pub fn ask_quest_only_dont_care(&mut self, first: bool) {
         if self.m.quest != 2 && self.m.quest != 3 {
             self.show_toast("Only for a mixed-quest overworld", 3.0);
@@ -1275,6 +1298,21 @@ mod tests {
         v.m.ladder_box.cell = 7;
         v.m.ladder_box.has = Has::Yes;
         assert_eq!(v.coast_reminder_text(), None, "coast item taken");
+    }
+
+    #[test]
+    fn reset_button_offers_the_originals_choices() {
+        let mut v = view();
+        v.m.started = true;
+        v.open_reset_menu();
+        assert_eq!(v.popup.as_ref().unwrap().choices.len(), 4);
+        // "Start over" asks first, and only "Yes" asks the program to start over
+        v.choose(Action::ResetMenu, 3, false);
+        assert!(matches!(v.popup.as_ref().unwrap().action, Action::StartOver));
+        v.choose(Action::StartOver, 1, false); // No
+        assert!(v.commands.is_empty());
+        v.choose(Action::StartOver, 0, false); // Yes
+        assert_eq!(v.commands, vec!["StartOver"]);
     }
 
     #[test]

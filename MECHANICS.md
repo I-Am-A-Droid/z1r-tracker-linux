@@ -840,3 +840,13 @@ string), native_function_pseudocode 0x792d6e is only `_CorExeMain@thunk`; the ru
   says how many marked spots would be replaced (`Tracker::quest_only`, `Tracker::mark_quest_only_dont_care`, tested);
   refused on non-mixed overworlds. The confirmation box now sizes itself to its question. (Not rebuilt: the HFQ/HSQ
   check boxes that only shade those spots.)
+
+## Reset button (asked for)
+The original's "Pause/Reset timer" button opens a pop-up with: "Timer has been Paused. Click here to Resume.",
+"Click here to confirm you want to Reset the TIMER to 0:00:00.", "Click here to Reset the TRACKER, (remove inventory
+but preserve maps) for groundhog/routers/4+4 purposes." and "Click here to close Z-Tracker, and restart the app. All
+your current work will be discarded!" (OverworldItemGridUI.fs, timerResetButton). Applied: a "Reset..." button beside
+Options and Hints (the top buttons are now three per row) opens the same four choices, each confirmed first. "Start
+over" puts the program back to its starting state without restarting it: a fresh tracker waiting for the overworld
+choice; settings, hot keys and the window stay. Unlike the original, the current work is first saved as a manual save,
+so it can be loaded again. The Options entry "Start over with a new seed" now does the same.

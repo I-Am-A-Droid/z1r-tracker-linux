@@ -29,12 +29,34 @@ const JPEG_QUALITY: u8 = 85;
 /// (Broadcast/addFakeMouse@168-1, token 0x06000f8a, RVA 0x3895c).
 pub const FAKE_POINTER: [[f32; 2]; 3] = [[0.0, 0.0], [12.0, 6.0], [6.0, 12.0]];
 
-/// One captured window picture, with where the mouse was (in the picture's pixels) and how many pixels make one
-/// tracker unit.
+/// The original's broadcast sizes (`BroadcastWindowSize`), as (setting, menu label, width in tracker units, scale):
+/// "Full size broadcast" 768 wide at 1, "2/3 size broadcast" 512 at 0.666666, "1/3 size broadcast" 256 at 0.333333
+/// (Broadcast/makeBroadcastWindow@45, token 0x06000f8b, RVA 0x389f0; labels from OptionsMenu.makeOptionsCanvas).
+pub const BROADCAST_SIZES: [(i64, &str, f32, f32); 3] = [(3, "Full size", 768.0, 1.0), (2, "2/3 size", 512.0, 0.666666), (1, "1/3 size", 256.0, 0.333333)];
+
+/// The stream's size setting as the original reads it: missing means 3 (full size, TrackerModelOptions..cctor,
+/// token 0x060008bd), and anything outside 1..=3 is brought back into it (TrackerModelOptions.read, token
+/// 0x06000759, RVA 0x148d4).
+pub fn broadcast_size(settings: &crate::settings::Settings) -> i64 {
+    settings.get_i64("BroadcastWindowSize", 3).clamp(1, 3)
+}
+
+/// How much the stream's picture is shrunk for a size: 1 → 0.333333, 2 → 0.666666, anything else → 1.
+pub fn broadcast_scale(size: i64) -> f32 {
+    match size {
+        1 => 0.333333,
+        2 => 0.666666,
+        _ => 1.0,
+    }
+}
+
+/// One captured window picture, with where the mouse was (in the picture's pixels), how many pixels make one
+/// tracker unit, and how much to shrink it (broadcast_scale).
 struct Frame {
     img: Arc<ColorImage>,
     pointer: Option<[f32; 2]>,
     scale: f32,
+    shrink: f32,
 }
 
 #[derive(Default)]
@@ -73,7 +95,7 @@ impl Streamer {
         let enc = shared.clone();
         std::thread::spawn(move || {
             while let Ok(f) = rx.recv() {
-                if let Some(jpeg) = encode_jpeg(&f.img, f.pointer, f.scale) {
+                if let Some(jpeg) = encode_jpeg(&f.img, f.pointer, f.scale, f.shrink) {
                     let mut l = enc.latest.lock().unwrap();
                     l.seq += 1;
                     l.jpeg = Arc::new(jpeg);
@@ -118,9 +140,9 @@ impl Streamer {
     /// Something to hand a captured frame to from another thread, with the mouse position in the picture's pixels
     /// (drawn as FAKE_POINTER, `scale` pixels to the unit). A frame that arrives while the previous one is still
     /// being encoded is dropped rather than queued.
-    pub fn frame_taker(&self, pointer: Option<[f32; 2]>, scale: f32) -> impl Fn(Arc<ColorImage>) + Send + 'static {
+    pub fn frame_taker(&self, pointer: Option<[f32; 2]>, scale: f32, shrink: f32) -> impl Fn(Arc<ColorImage>) + Send + 'static {
         let tx = self.frames.clone();
-        move |img| match tx.try_send(Frame { img, pointer, scale }) {
+        move |img| match tx.try_send(Frame { img, pointer, scale, shrink }) {
             Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
         }
     }
@@ -201,14 +223,22 @@ fn route_ip() -> Option<IpAddr> {
     (!ip.is_unspecified()).then_some(ip)
 }
 
-fn encode_jpeg(img: &ColorImage, pointer: Option<[f32; 2]>, scale: f32) -> Option<Vec<u8>> {
+fn encode_jpeg(img: &ColorImage, pointer: Option<[f32; 2]>, scale: f32, shrink: f32) -> Option<Vec<u8>> {
     let mut rgb: Vec<u8> = img.pixels.iter().flat_map(|c| { let [r, g, b, _] = c.to_srgba_unmultiplied(); [r, g, b] }).collect();
     if let Some(tip) = pointer {
         draw_pointer(&mut rgb, img.size, tip, scale);
     }
+    let (mut w, mut h) = (img.size[0] as u32, img.size[1] as u32);
+    // the smaller broadcast sizes: the whole picture (pointer too) shrunk, as the original's ScaleTransform does
+    if shrink < 1.0 {
+        let full = image::RgbImage::from_raw(w, h, rgb)?;
+        let (sw, sh) = (((w as f32 * shrink).round() as u32).max(1), ((h as f32 * shrink).round() as u32).max(1));
+        rgb = image::imageops::resize(&full, sw, sh, image::imageops::FilterType::Triangle).into_raw();
+        (w, h) = (sw, sh);
+    }
     let mut out = Vec::new();
     let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY);
-    enc.encode(&rgb, img.size[0] as u32, img.size[1] as u32, image::ExtendedColorType::Rgb8).ok()?;
+    enc.encode(&rgb, w, h, image::ExtendedColorType::Rgb8).ok()?;
     Some(out)
 }
 
@@ -344,7 +374,7 @@ mod tests {
         assert_eq!(st.urls().0, format!("http://127.0.0.1:{port}/stream.mjpg"));
         assert!(!st.wanted());
         // stands in for the tracker: a frame whenever someone is waiting
-        let take = st.frame_taker(None, 1.0);
+        let take = st.frame_taker(None, 1.0, 1.0);
         let shared = st.shared.clone();
         std::thread::spawn(move || {
             while !shared.stop.load(Ordering::SeqCst) {
@@ -383,6 +413,18 @@ mod tests {
         drop(st);
         let again = Streamer::start(LOCAL_IP, port).unwrap();
         drop(again);
+    }
+
+    #[test]
+    fn broadcast_sizes_shrink_the_picture_as_the_original() {
+        assert_eq!((broadcast_scale(1), broadcast_scale(2), broadcast_scale(3), broadcast_scale(0)), (0.333333, 0.666666, 1.0, 1.0));
+        let img = ColorImage::filled([768, 967], eframe::egui::Color32::RED);
+        for (size, _, width, scale) in BROADCAST_SIZES {
+            let jpeg = encode_jpeg(&img, Some([10.0, 10.0]), 1.0, broadcast_scale(size)).unwrap();
+            let pic = image::load_from_memory(&jpeg).unwrap();
+            assert_eq!(pic.width(), width as u32);
+            assert_eq!(pic.height(), (967.0 * scale).round() as u32);
+        }
     }
 
     #[test]

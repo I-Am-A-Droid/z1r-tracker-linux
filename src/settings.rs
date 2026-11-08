@@ -82,6 +82,13 @@ impl Settings {
     pub fn get_f64(&self, key: &str, def: f64) -> f64 {
         self.obj.get(key).and_then(|v| v.as_f64()).unwrap_or(def)
     }
+    pub fn get_i64(&self, key: &str, def: i64) -> i64 {
+        self.obj.get(key).and_then(|v| v.as_i64()).unwrap_or(def)
+    }
+    pub fn set_i64(&mut self, key: &str, v: i64) {
+        self.obj.insert(key.into(), Value::from(v));
+        self.save();
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

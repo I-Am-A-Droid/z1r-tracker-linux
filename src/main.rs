@@ -460,7 +460,8 @@ impl TrackerApp {
                 // the mouse's last position, drawn as the original's fake pointer (in pixels, as the picture is)
                 let ppp = ctx.pixels_per_point();
                 let pointer = ctx.input(|i| i.pointer.latest_pos()).map(|p| [p.x * ppp, p.y * ppp]);
-                ctx.request_screenshot(s.frame_taker(pointer, ppp));
+                let shrink = stream::broadcast_scale(stream::broadcast_size(&self.view.settings));
+                ctx.request_screenshot(s.frame_taker(pointer, ppp, shrink));
             }
             ctx.request_repaint_after(every);
         }
@@ -508,6 +509,16 @@ impl TrackerApp {
                     ui.colored_label(Color32::YELLOW, "No network adapter with an address was found; check that this computer is on a network.");
                 }
             }
+            // the original's three broadcast sizes (its Options: Full / 2/3 / 1/3 size broadcast)
+            ui.horizontal(|ui| {
+                ui.label("Size:");
+                let mut size = stream::broadcast_size(settings);
+                for (n, label, _, _) in stream::BROADCAST_SIZES {
+                    if ui.radio_value(&mut size, n, label).changed() {
+                        settings.set_i64("BroadcastWindowSize", n);
+                    }
+                }
+            });
             ui.add_space(6.0);
             let (live, page) = stream::urls(stream::chosen_ip(settings), stream::STREAM_PORT);
             ui.strong("Address for the OBS Media Source:");

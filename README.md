@@ -89,6 +89,7 @@ Click **Stream** (under Reset...). The window that opens has:
 - **Streaming on**: starts and stops the stream. A red dot on the Stream button shows while it streams.
 - **Local** (OBS on this computer, address `127.0.0.1`) or **Network** (OBS on another computer), with a list of
   this computer's network adapters to pick which address to stream from (**Refresh** looks again).
+- **Size**: Full size, 2/3 size or 1/3 size, the same three sizes as the original's broadcast window.
 - The address to give OBS, in its own box with a **Copy** button, for example
   `http://127.0.0.1:8765/stream.mjpg`.
 - The steps for OBS: Sources → **+** → **Media Source**, untick **Local File**, paste the address into

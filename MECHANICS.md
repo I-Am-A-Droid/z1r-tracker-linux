@@ -898,5 +898,17 @@ Y − THRU_MAIN_MAP_AND_ITEM_PROGRESS_H + 230, because that window shows the low
 MouseMove and is never hidden, so it stays where the mouse last was. The native entry point (0x792d6e) is only the
 `_CorExeMain` start-up stub, so these come from the IL. The stream now draws the same triangle into every frame
 (`stream::FAKE_POINTER`, `stream::draw_pointer`, tested), with its tip at egui's last known mouse position and
-1 tracker unit = pixels-per-point pixels, smoothed at the edges. Checked 2026-11-08 by running the
+1 tracker unit = pixels-per-point pixels, smoothed at the edges.
+
+Broadcast size (checked 2026-11-08). The original's broadcast window has three sizes, setting `BroadcastWindowSize`
+(an integer in Z1R_Tracker_settings.json). In `Broadcast/makeBroadcastWindow@45` (token 0x06000f8b, RVA 0x389f0)
+size 1 gives width 256 and `ScaleTransform` 0.333333, size 2 gives 512 and 0.666666, anything else 768 and no
+scaling (the window height becomes content height × scale + 40). Its default is 3 (`TrackerModelOptions..cctor`,
+token 0x060008bd: `ldc.i4.3; stsfld BroadcastWindowSize@131`), and reading the settings brings the value into 1..3
+(`TrackerModelOptions.read`, token 0x06000759, RVA 0x148d4: `min(3, max(1, v))`). The Options menu labels are
+"Full size broadcast" (3), "2/3 size broadcast" (2) and "1/3 size broadcast" (1) (OptionsMenu.makeOptionsCanvas,
+handlers at RVA 0x81f50, 0x8201c, 0x820e8). The Stream window now has the same choice (Size: Full size / 2/3 size /
+1/3 size), kept in the same `BroadcastWindowSize` key with the same default and limits (`stream::broadcast_size`,
+`stream::broadcast_scale`, `stream::BROADCAST_SIZES`). Each streamed frame, pointer included, is shrunk by that
+scale before it is sent (tested; running it at size 1 sent 282 × 355 for an 845 × 1064 window). Checked 2026-11-08 by running the
 tracker: `/frame.jpg` answered in 0.07 s (an 845 × 1064 JPEG) and `/stream.mjpg` gave 29 frames in 3 s.

@@ -163,7 +163,8 @@ pub struct Tracker {
     pub drawing_layer_icons: Value,
     pub alt_map_file: String,
     pub hide_map_initially: bool,
-    pub spots_over_time: Vec<i64>,
+    /// (seconds, overworld spots left), a point each time the count changes (TrackerModel.timelineDataOverworldSpotsRemain)
+    pub spots_over_time: Vec<(i64, i64)>,
     pub timeline: BTreeMap<String, i64>, // ident -> seconds
     pub seconds: i64,
     pub started: bool,
@@ -515,6 +516,26 @@ impl Tracker {
         (actual, marks)
     }
 
+    /// Adds a point to the spots-remaining history when the count has changed since the last point
+    /// (TrackerModel::allUIEventingLogic, token 0x0600037b: owSpotsRemain <> priorOWSpotsRemain).
+    pub fn note_spots_remaining(&mut self) {
+        let left = self.spots_remaining() as i64;
+        if self.spots_over_time.last().map(|p| p.1) != Some(left) {
+            self.spots_over_time.push((self.seconds, left));
+        }
+    }
+
+    /// The original's "Reset the TIMER" (OverworldItemGridUI/MakeItemGrid@655-186, token 0x06001761, RVA 0x50758):
+    /// the clock to 0:00:00, the spots-remaining history restarted with one point (0, spots left now), and every item
+    /// on the timeline moved to 0 seconds, so what is had counts as had from the start.
+    pub fn reset_timer(&mut self) {
+        self.seconds = 0;
+        self.spots_over_time = vec![(0, self.spots_remaining() as i64)];
+        for s in self.timeline.values_mut() {
+            *s = 0;
+        }
+    }
+
     pub fn max_uses(&self, mark: i32) -> usize {
         let t = &TILES[mark as usize];
         if self.first_quest_counts() { t.max_1q } else { t.max_2q }
@@ -813,7 +834,9 @@ impl Tracker {
         root.insert("DrawingLayerIcons".into(), self.drawing_layer_icons.clone());
         root.insert("AlternativeOverworldMapFilename".into(), json!(self.alt_map_file));
         root.insert("ShouldInitiallyHideOverworldMap".into(), json!(self.hide_map_initially));
-        root.insert("OverworldSpotsRemainingOverTime".into(), json!(self.spots_over_time));
+        // saved flattened as [seconds, spots, seconds, spots, ...] (SaveAndLoad/flat@375)
+        let flat: Vec<i64> = self.spots_over_time.iter().flat_map(|&(s, n)| [s, n]).collect();
+        root.insert("OverworldSpotsRemainingOverTime".into(), json!(flat));
         root.insert("Timeline".into(), Value::Array(timeline));
         // extra: what was taken at each Take Any / Wood Sword cave (the original ignores keys it doesn't know)
         let mut choices = vec![];
@@ -973,7 +996,9 @@ impl Tracker {
         t.drawing_layer_icons = root.get("DrawingLayerIcons").cloned().unwrap_or(json!([]));
         t.alt_map_file = root.get("AlternativeOverworldMapFilename").and_then(|v| v.as_str()).unwrap_or("").to_string();
         t.hide_map_initially = boolv(&root, "ShouldInitiallyHideOverworldMap", false);
-        t.spots_over_time = arr(&root, "OverworldSpotsRemainingOverTime").iter().filter_map(|v| v.as_i64()).collect();
+        // read back in pairs (WPFUI/makeAll@1956-400: element 2i is the time, 2i+1 the count)
+        let flat: Vec<i64> = arr(&root, "OverworldSpotsRemainingOverTime").iter().filter_map(|v| v.as_i64()).collect();
+        t.spots_over_time = flat.chunks_exact(2).map(|c| (c[0], c[1])).collect();
         for e in arr(&root, "Timeline") {
             let secs = int(e, "Seconds", -1);
             if let (Some(id), true) = (e.get("Ident").and_then(|v| v.as_str()), secs >= 0) {
@@ -1047,6 +1072,30 @@ mod tests {
     fn fresh_first_quest_has_73_spots_to_check() {
         let t = Tracker::new();
         assert_eq!(t.spots_remaining(), 73);
+    }
+
+    #[test]
+    fn spots_history_and_timer_reset_follow_the_original() {
+        let mut t = Tracker::new();
+        t.started = true;
+        t.seconds = 1;
+        t.note_spots_remaining();
+        t.note_spots_remaining(); // unchanged: no new point
+        assert_eq!(t.spots_over_time, vec![(1, 73)]);
+        t.seconds = 50;
+        t.mark[7][3] = 0; // a level found: one spot fewer
+        t.note_spots_remaining();
+        assert_eq!(t.spots_over_time, vec![(1, 73), (50, 72)]);
+        // saved flattened, as the original does, and read back
+        let j: serde_json::Value = serde_json::from_str(&t.to_json()).unwrap();
+        assert_eq!(j["OverworldSpotsRemainingOverTime"], serde_json::json!([1, 73, 50, 72]));
+        let mut u = Tracker::new();
+        u.load_json(&t.to_json()).unwrap();
+        assert_eq!(u.spots_over_time, t.spots_over_time);
+        // reset the timer
+        t.timeline.insert("Bow".into(), 40);
+        t.reset_timer();
+        assert_eq!((t.seconds, t.spots_over_time.clone(), t.timeline["Bow"]), (0, vec![(0, 72)], 0));
     }
 
     #[test]

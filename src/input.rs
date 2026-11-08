@@ -362,7 +362,7 @@ impl View {
             Action::Blocker(d, s) => self.m.blockers[d][s].kind = i,
             Action::ResetTimer => {
                 if i == 0 {
-                    self.m.seconds = 0;
+                    self.m.reset_timer();
                     self.show_toast("Timer reset", 2.0);
                 }
             }

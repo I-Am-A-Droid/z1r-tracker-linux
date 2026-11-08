@@ -850,3 +850,18 @@ Options and Hints (the top buttons are now three per row) opens the same four ch
 over" puts the program back to its starting state without restarting it: a fresh tracker waiting for the overworld
 choice; settings, hot keys and the window stay. Unlike the original, the current work is first saved as a manual save,
 so it can be loaded again. The Options entry "Start over with a new seed" now does the same.
+
+## Timer reset and the spots-remaining history (checked 2026-11-08)
+Native check again: core_target_open on Z1R_WPF.exe, native_strings_find "Reset the TIMER": 0 matches (a .NET user
+string), native_function_pseudocode 0x792d6e: Ghidra (Deep mode) now ran, and shows only the `_CorExeMain` entry stub;
+the rules are from the .NET IL.
+- "Reset the TIMER" (`OverworldItemGridUI/MakeItemGrid@655-186::Invoke`, token 0x06001761, RVA 0x50758): fires
+  resetTimerEvent (clock to 0:00:00), clears timelineDataOverworldSpotsRemain and adds (0, OwSpotsRemain), calls
+  ResetTotalSeconds on every timeline item and redraws the timeline.
+- The history (`TrackerModel::allUIEventingLogic`, token 0x0600037b, RVA 0xb324): whenever owSpotsRemain differs from
+  priorOWSpotsRemain, it adds (seconds since the start, owSpotsRemain). Saved flattened as
+  [seconds, spots, seconds, spots, ...] (`SaveAndLoad/flat@375::GenerateNext`, token 0x060001f8, RVA 0x50c8) and read
+  back in pairs (`WPFUI/makeAll@1956-400`, token 0x06000808, RVA 0x1b5dc). The person's save shows [1,73].
+- Fixed: the rebuild kept one bare count per minute and saved that, which the original would read as wrong pairs. It
+  now keeps (seconds, spots) pairs added when the count changes (`Tracker::note_spots_remaining`), saves and loads them
+  flattened like the original, and "Reset the TIMER" does all three steps above (`Tracker::reset_timer`, tested).

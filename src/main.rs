@@ -276,6 +276,10 @@ impl TrackerApp {
     }
 
     fn tick(&mut self) {
+        // a point in the spots-remaining history whenever the count changes (TrackerModel::allUIEventingLogic)
+        if self.view.m.started {
+            self.view.m.note_spots_remaining();
+        }
         // autosave on its own clock, every AUTOSAVE_SECONDS of real time, even while the game timer is paused
         // (WPFUI/makeAll@1981-404 starts a 60-second DispatcherTimer that calls SaveAll(AutoSave))
         if self.last_autosave.elapsed().as_secs() >= AUTOSAVE_SECONDS {
@@ -296,11 +300,8 @@ impl TrackerApp {
         for _ in 0..elapsed {
             self.view.m.seconds += 1;
             let s = self.view.m.seconds;
-            // once a minute of game time the remaining-spots history grows (Program/MyWindow::Update -> updateTimeline)
             if s % 60 == 0 && s / 60 != self.last_autosave_minute {
                 self.last_autosave_minute = s / 60;
-                let left = self.view.m.spots_remaining();
-                self.view.m.spots_over_time.push(left);
             }
         }
     }

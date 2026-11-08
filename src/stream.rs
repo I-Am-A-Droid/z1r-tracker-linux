@@ -23,6 +23,18 @@ pub const STREAM_PORT: u16 = 8765;
 pub const STREAM_FPS: u64 = 15;
 /// JPEG quality (1-100).
 const JPEG_QUALITY: u8 = 85;
+/// The pointer drawn into the stream, as the original's broadcast window draws it (screen capture doesn't show the
+/// real one): a white triangle with its tip at the mouse, corners (0,0), (12,6), (6,12) in tracker units
+/// (Broadcast/addFakeMouse@168-1, token 0x06000f8a, RVA 0x3895c).
+pub const FAKE_POINTER: [[f32; 2]; 3] = [[0.0, 0.0], [12.0, 6.0], [6.0, 12.0]];
+
+/// One captured window picture, with where the mouse was (in the picture's pixels) and how many pixels make one
+/// tracker unit.
+struct Frame {
+    img: Arc<ColorImage>,
+    pointer: Option<[f32; 2]>,
+    scale: f32,
+}
 
 #[derive(Default)]
 struct Latest {
@@ -41,7 +53,7 @@ struct Shared {
 /// A running stream server.
 pub struct Streamer {
     shared: Arc<Shared>,
-    frames: SyncSender<Arc<ColorImage>>,
+    frames: SyncSender<Frame>,
     port: u16,
 }
 
@@ -54,11 +66,11 @@ impl Streamer {
 
         // encoder: turns captured frames into JPEG off the drawing thread (a frame still being encoded makes the
         // next one be skipped rather than queued)
-        let (tx, rx) = sync_channel::<Arc<ColorImage>>(1);
+        let (tx, rx) = sync_channel::<Frame>(1);
         let enc = shared.clone();
         std::thread::spawn(move || {
-            while let Ok(img) = rx.recv() {
-                if let Some(jpeg) = encode_jpeg(&img) {
+            while let Ok(f) = rx.recv() {
+                if let Some(jpeg) = encode_jpeg(&f.img, f.pointer, f.scale) {
                     let mut l = enc.latest.lock().unwrap();
                     l.seq += 1;
                     l.jpeg = Arc::new(jpeg);
@@ -90,11 +102,12 @@ impl Streamer {
         self.shared.watchers.load(Ordering::SeqCst) > 0
     }
 
-    /// Something to hand captured frames to from another thread: a frame that arrives while the previous one is
-    /// still being encoded is dropped rather than queued.
-    pub fn frame_taker(&self) -> impl Fn(Arc<ColorImage>) + Send + 'static {
+    /// Something to hand a captured frame to from another thread, with the mouse position in the picture's pixels
+    /// (drawn as FAKE_POINTER, `scale` pixels to the unit). A frame that arrives while the previous one is still
+    /// being encoded is dropped rather than queued.
+    pub fn frame_taker(&self, pointer: Option<[f32; 2]>, scale: f32) -> impl Fn(Arc<ColorImage>) + Send + 'static {
         let tx = self.frames.clone();
-        move |img| match tx.try_send(img) {
+        move |img| match tx.try_send(Frame { img, pointer, scale }) {
             Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
         }
     }
@@ -127,12 +140,43 @@ fn local_ip() -> Option<String> {
     (!ip.is_unspecified()).then(|| ip.to_string())
 }
 
-fn encode_jpeg(img: &ColorImage) -> Option<Vec<u8>> {
-    let rgb: Vec<u8> = img.pixels.iter().flat_map(|c| { let [r, g, b, _] = c.to_srgba_unmultiplied(); [r, g, b] }).collect();
+fn encode_jpeg(img: &ColorImage, pointer: Option<[f32; 2]>, scale: f32) -> Option<Vec<u8>> {
+    let mut rgb: Vec<u8> = img.pixels.iter().flat_map(|c| { let [r, g, b, _] = c.to_srgba_unmultiplied(); [r, g, b] }).collect();
+    if let Some(tip) = pointer {
+        draw_pointer(&mut rgb, img.size, tip, scale);
+    }
     let mut out = Vec::new();
     let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY);
     enc.encode(&rgb, img.size[0] as u32, img.size[1] as u32, image::ExtendedColorType::Rgb8).ok()?;
     Some(out)
+}
+
+/// Paints FAKE_POINTER in white with its tip at `tip`, edges smoothed (4 × 4 samples a pixel).
+fn draw_pointer(rgb: &mut [u8], size: [usize; 2], tip: [f32; 2], scale: f32) {
+    let pts = FAKE_POINTER.map(|[x, y]| [tip[0] + x * scale, tip[1] + y * scale]);
+    let edge = |a: [f32; 2], b: [f32; 2], p: [f32; 2]| (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    let inside = |p: [f32; 2]| {
+        let (e0, e1, e2) = (edge(pts[0], pts[1], p), edge(pts[1], pts[2], p), edge(pts[2], pts[0], p));
+        (e0 >= 0.0 && e1 >= 0.0 && e2 >= 0.0) || (e0 <= 0.0 && e1 <= 0.0 && e2 <= 0.0)
+    };
+    let (x0, x1) = (tip[0].floor().max(0.0) as usize, ((tip[0] + 12.0 * scale).ceil() as usize).min(size[0]));
+    let (y0, y1) = (tip[1].floor().max(0.0) as usize, ((tip[1] + 12.0 * scale).ceil() as usize).min(size[1]));
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let mut n = 0;
+            for sy in 0..4 {
+                for sx in 0..4 {
+                    n += inside([x as f32 + (sx as f32 + 0.5) / 4.0, y as f32 + (sy as f32 + 0.5) / 4.0]) as u32;
+                }
+            }
+            if n > 0 {
+                let i = (y * size[0] + x) * 3;
+                for c in &mut rgb[i..i + 3] {
+                    *c = ((*c as u32 * (16 - n) + 255 * n) / 16) as u8;
+                }
+            }
+        }
+    }
 }
 
 const PAGE: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Z-Tracker</title>\
@@ -217,13 +261,28 @@ mod tests {
     use std::io::Read;
 
     #[test]
+    fn the_pointer_is_the_originals_white_triangle_with_its_tip_at_the_mouse() {
+        let size = [40, 40];
+        let mut rgb = vec![0u8; 40 * 40 * 3];
+        draw_pointer(&mut rgb, size, [10.0, 10.0], 2.0);
+        let at = |x: usize, y: usize| rgb[(y * 40 + x) * 3];
+        assert_eq!(at(9, 9), 0); // nothing before the tip
+        assert_eq!(at(20, 20), 255); // inside: (10,10) + (5,5)·2
+        assert_eq!(at(33, 33), 0); // past the far corners (34,22) and (22,34)
+        assert_eq!(at(31, 21), 255); // near the (12,6) corner
+        assert_eq!(at(21, 31), 255); // near the (6,12) corner
+        // a pointer partly off the picture is cut, not a crash
+        draw_pointer(&mut rgb, size, [35.0, -5.0], 2.0);
+    }
+
+    #[test]
     fn serves_the_page_a_frame_and_the_stream() {
         // any free port
         let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
         let st = Streamer::start(port).unwrap();
         assert!(!st.wanted());
         // stands in for the tracker: a frame whenever someone is waiting
-        let take = st.frame_taker();
+        let take = st.frame_taker(None, 1.0);
         let shared = st.shared.clone();
         std::thread::spawn(move || {
             while !shared.stop.load(Ordering::SeqCst) {

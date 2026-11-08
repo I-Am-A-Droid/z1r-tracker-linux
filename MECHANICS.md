@@ -882,5 +882,16 @@ Z1R_Tracker_settings.json) starts a small web server on every network interface,
 Frames are the window as drawn (egui `request_screenshot`), captured at most `STREAM_FPS` = 15 times a second and
 only while a stream or picture is being asked for. Encoding runs on its own thread, and a frame that arrives while
 the previous one is still being encoded is dropped. When nothing new is drawn the last frame is sent again each
-second, so players don't give up. Turning the option off closes the server. Checked 2026-11-08 by running the
+second, so players don't give up. Turning the option off closes the server.
+
+The mouse pointer (checked 2026-11-08): screen capture doesn't show the real pointer, so the original's broadcast
+window draws its own. `Broadcast/addFakeMouse@168-1` (token 0x06000f8a, RVA 0x3895c) adds a `Polygon` with
+`Fill = Brushes.White`, no outline, and points (0,0), (12,6), (6,12) in tracker units. The MouseMove handler
+`Broadcast/makeBroadcastWindow@204-18::Invoke` (token 0x06000fb8, RVA 0x398e8) puts the polygon's (0,0) corner at
+the mouse position `GetPosition(appMainCanvas)` (`Canvas.SetLeft = X`, `SetTop = Y`; in the lower half the Y becomes
+Y − THRU_MAIN_MAP_AND_ITEM_PROGRESS_H + 230, because that window shows the lower part moved up). It only moves on
+MouseMove and is never hidden, so it stays where the mouse last was. The native entry point (0x792d6e) is only the
+`_CorExeMain` start-up stub, so these come from the IL. The stream now draws the same triangle into every frame
+(`stream::FAKE_POINTER`, `stream::draw_pointer`, tested), with its tip at egui's last known mouse position and
+1 tracker unit = pixels-per-point pixels, smoothed at the edges. Checked 2026-11-08 by running the
 tracker: `/frame.jpg` answered in 0.07 s (an 845 × 1064 JPEG) and `/stream.mjpg` gave 29 frames in 3 s.

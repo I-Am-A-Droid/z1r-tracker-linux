@@ -443,7 +443,10 @@ impl TrackerApp {
             let every = std::time::Duration::from_millis(1000 / stream::STREAM_FPS);
             if self.last_stream_frame.elapsed() >= every {
                 self.last_stream_frame = Instant::now();
-                ctx.request_screenshot(s.frame_taker());
+                // the mouse's last position, drawn as the original's fake pointer (in pixels, as the picture is)
+                let ppp = ctx.pixels_per_point();
+                let pointer = ctx.input(|i| i.pointer.latest_pos()).map(|p| [p.x * ppp, p.y * ppp]);
+                ctx.request_screenshot(s.frame_taker(pointer, ppp));
             }
             ctx.request_repaint_after(every);
         }

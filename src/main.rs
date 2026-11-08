@@ -85,6 +85,10 @@ fn main() {
         }
     };
 
+    // as the original at every start: ZTracker.lnk beside the program (Windows only; not for --screenshot runs)
+    if opts.screenshot.is_none() {
+        platform::write_shortcut();
+    }
     let assets = Assets::new();
     let settings = Settings::load();
     let hotkeys = HotKeys::load();

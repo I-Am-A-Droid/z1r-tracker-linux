@@ -1000,3 +1000,17 @@ from `art::logo`). It is kept as `windows/z1r-tracker.png`, and `windows/z1r-tra
 24, 32, 48, 64 and 128 pixel pictures (PNG-compressed, which Windows Vista and later read). It is still icon group
 32512, so the rest of the rule above is unchanged; checked that the exe and the installer contain all six pictures
 and no longer the original's.
+
+Window icon and the ZTracker.lnk shortcut (checked 2026-11-08). `Program/MyWindow::.ctor` (token 0x0600004d,
+RVA 0x50f0) never sets `Window.Icon`, so the original's window shows the program's own icon (the one above); the
+rebuild's window icon is `art::window_icon`, the same logo as its Windows icon. The same constructor, at every
+start (IL_0175–IL_01fe), makes a ShellLink (CLSID 00021401-0000-0000-C000-000000000046) with
+`SetDescription("Launch Z-Tracker")`, `SetPath(<program folder>\Z1R_WPF.exe)`, `SetWorkingDirectory(<program
+folder>)`, `SetIconLocation(<program folder>\icons/ztlogo64x64.ico, 0)`, and saves it as `<program folder>\ZTracker.lnk`
+(`IPersistFile.Save`). The rebuild now does the same on Windows (`platform::write_shortcut`, called at start-up
+except for --screenshot runs; a folder it can't write to is skipped), writing the .lnk file itself in the MS-SHLLINK
+format (`platform::shell_link`: header, LinkInfo with the target's path in ANSI and UTF-16, then name, working
+directory and icon location). Its target is z1r-tracker.exe and, since the rebuild's icon is built into the
+program rather than kept in an icons folder, the icon location is the program itself, picture 0. Tested: the
+layout (unit test), and under Wine the program wrote ZTracker.lnk beside itself and opening that shortcut through
+Wine's shell started the tracker.

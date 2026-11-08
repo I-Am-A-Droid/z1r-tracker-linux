@@ -1,7 +1,25 @@
 //! Fixed tables. Values and names come from the mechanics sheet (MECHANICS.md),
 //! which records where each one was found in the original program.
 
-pub const VERSION: &str = "2.1.0";
+/// The version shown and written into saves, made as the original makes OverworldData.VersionString: "%d.%d.%d" of
+/// the program's version's Major, Minor and Build (Z1R_Tracker.dll `$OverworldData..cctor`, token 0x0600096c, RVA
+/// 0x18c48). Here the program's version is Cargo.toml's, so it is set in one place.
+pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION_MAJOR"), ".", env!("CARGO_PKG_VERSION_MINOR"), ".", env!("CARGO_PKG_VERSION_PATCH"));
+/// OverworldData.ProgramNameString: "Z-Tracker v%s" of VERSION (same function).
+pub const PROGRAM_NAME: &str = concat!("Z-Tracker v", env!("CARGO_PKG_VERSION_MAJOR"), ".", env!("CARGO_PKG_VERSION_MINOR"), ".", env!("CARGO_PKG_VERSION_PATCH"));
+/// OverworldData.Website (token 0x060008e5).
+pub const WEBSITE: &str = "https://github.com/Neononane/Zelda1RandoTools";
+/// When this copy of the program was built (UTC; set by build.rs), so two builds of the same version can be told apart.
+pub const BUILD_DATE: &str = env!("Z1R_BUILD_DATE");
+
+/// The About box's text: the original's OverworldData.AboutBody ("BETA RELEASE version %s of %s originally by …\n\nLearn
+/// more at\n%s\n" with the full version, ProgramNameString and Website), then a line saying which build this is.
+pub fn about_body() -> String {
+    format!(
+        "BETA RELEASE version {} of {PROGRAM_NAME} originally by Dr. Brian Lorgon111 with updates by Neononane\n\nLearn more at\n{WEBSITE}\n\nThis Linux, Windows and macOS rebuild was built {BUILD_DATE}.",
+        env!("CARGO_PKG_VERSION")
+    )
+}
 
 // ---------- Item boxes (dungeon / white sword / ladder / armos boxes) ----------
 // Index = value stored in a box's "CellCurrent"; -1 = empty box.

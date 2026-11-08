@@ -954,3 +954,25 @@ original's places and sizes (`view::MONSTER_AT`, `FLOOR_DROP_AT`, `ROOM_DETAIL_S
 (`DONE_DARKEN`, drawn as a 0.5 tint, which looks the same as a half-black square) and the stay-bright list
 (`monster_stays_bright`, tested against the monster names). Its rooms are already 39 × 27, so the numbers carry over
 unchanged.
+
+## Version text, version button and About box (checked 2026-11-08)
+
+The native entry point (0x792d6e) is only the `_CorExeMain` stub; these come from the IL of Z1R_Tracker.dll and
+Z1R_WPF.exe.
+- `<StartupCode$Z1R_Tracker>.$OverworldData..cctor` (Z1R_Tracker.dll, token 0x0600096c, RVA 0x18c48):
+  `version = Assembly.GetExecutingAssembly().GetName().Version` (2.1.0.2 in the shipped files; Z1R_WPF.exe's
+  AssemblyFileVersion is also 2.1.0.2 and its AssemblyInformationalVersion 2.1.0);
+  `VersionString = sprintf "%d.%d.%d" version.Major version.Minor version.Build` = "2.1.0";
+  `ProgramNameString = sprintf "Z-Tracker v%s" VersionString`;
+  `AboutBody = sprintf "BETA RELEASE version %s of %s originally by Dr. Brian Lorgon111 with updates by
+  Neononane\n\nLearn more at\n%s\n" (version.ToString()) ProgramNameString Website`, with `Website` =
+  "https://github.com/Neononane/Zelda1RandoTools" (`OverworldData.get_Website`, token 0x060008e5).
+  VersionString is what saves record as "Version" and what loading compares.
+- The "v2.1.0" text is a button (`CustomComboBoxes.makeVersionButtonWithBehavior`: `makeButton(sprintf "v%s"
+  VersionString, Some 12.0, Some Brushes.Orange)`); clicking it shows a modal message box with AboutBody and the
+  buttons "Go to website" (opens Website) and "Ok".
+The rebuild had the version as fixed grey text. Now `data::VERSION` and `PROGRAM_NAME` are made by the same
+formulas from Cargo.toml's version (so the version is set in one place), the text is an orange size-12 button, and
+clicking it opens the About box (`data::about_body`, a modal with 0.5 sunglasses like the Stream window) with "Go to
+website" and "Ok". Rebuild-only: the About text ends with the date and time this copy was built (build.rs sets
+`Z1R_BUILD_DATE`), so an old AppImage or installer can be told from a new one (tested).

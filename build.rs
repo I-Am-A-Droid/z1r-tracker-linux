@@ -35,7 +35,28 @@ fn table(code: &mut String, doc: &str, name: &str, dir: &str) {
     code.push_str("];\n");
 }
 
+/// Today's date and time (UTC) as "YYYY-MM-DD HH:MM UTC", from the system clock (days to a civil date, H. Hinnant's
+/// algorithm), for the About box.
+fn build_date() -> String {
+    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+    let (days, rem) = (secs.div_euclid(86400), secs.rem_euclid(86400));
+    let z = days + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + (m <= 2) as i64;
+    format!("{y:04}-{m:02}-{d:02} {:02}:{:02} UTC", rem / 3600, rem % 3600 / 60)
+}
+
 fn main() {
+    // the build's date, for the About box; made again whenever the program's code or this file changes
+    println!("cargo:rerun-if-changed=src");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rustc-env=Z1R_BUILD_DATE={}", build_date());
     let mut code = String::new();
     table(&mut code, "Overworld map screens", "OVERWORLD_TILES", "assets/overworld");
     table(&mut code, "The magnifier's enlarged screens", "MAGNIFIER_TILES", "assets/magnifier");

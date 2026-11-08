@@ -258,6 +258,8 @@ struct TrackerApp {
     show_stream: bool,
     stream_adapters: Vec<stream::Adapter>,
     stream_error: Option<String>,
+    /// the About box, opened by the version button
+    show_about: bool,
 }
 
 impl TrackerApp {
@@ -265,7 +267,7 @@ impl TrackerApp {
         TrackerApp {
             view, last_tick: Instant::now(), last_autosave_minute: -1, last_autosave: Instant::now(), screenshot, frames: 0,
             shot_state: Arc::new(AtomicU8::new(0)), show_hotkeys: false, show_custom_map: false, custom_map_text: String::new(), zoom_set: false, frames_seen: 0,
-            placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(), show_stream: false, stream_adapters: vec![], stream_error: None,
+            placed_at: None, place_shift: None, streamer: None, last_stream_frame: Instant::now(), show_stream: false, stream_adapters: vec![], stream_error: None, show_about: false,
         }
     }
 
@@ -422,6 +424,7 @@ impl TrackerApp {
                 self.stream_adapters = stream::adapters();
                 self.show_stream = true;
             }
+            "About" => self.show_about = true,
             "Zoom" => self.zoom_set = false,
             _ => {}
         }
@@ -581,8 +584,40 @@ impl TrackerApp {
         }
     }
 
+    /// The original's About box (CustomComboBoxes.makeVersionButtonWithBehavior): its AboutBody text with the buttons
+    /// "Go to website" (opens OverworldData.Website) and "Ok"; modal like the original's DoModalMessageBox.
+    fn about_window(&mut self, ctx: &egui::Context) {
+        if !self.show_about {
+            return;
+        }
+        let mut close = false;
+        let sunglasses = Color32::from_black_alpha((MODAL_SUNGLASSES_OPACITY * 255.0).round() as u8);
+        let shown = egui::Modal::new(egui::Id::unique("about")).backdrop_color(sunglasses).show(ctx, |ui| {
+            ui.set_width(440.0);
+            ui.heading(data::PROGRAM_NAME);
+            ui.separator();
+            for line in data::about_body().lines() {
+                ui.label(line);
+            }
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                if ui.button("Go to website").clicked() {
+                    platform::open(data::WEBSITE);
+                    close = true;
+                }
+                if ui.button("  Ok  ").clicked() {
+                    close = true;
+                }
+            });
+        });
+        if close || shown.should_close() {
+            self.show_about = false;
+        }
+    }
+
     fn windows(&mut self, ctx: &egui::Context) {
         self.stream_window(ctx);
+        self.about_window(ctx);
         let mut open = self.show_custom_map;
         let mut close = false;
         egui::Window::new("Overworld picture for the blank map").open(&mut open).default_width(520.0).show(ctx, |ui| {
@@ -727,6 +762,7 @@ impl eframe::App for TrackerApp {
                     Ok("quest-only") => self.view.ask_quest_only_dont_care(true),
                     Ok("reset") => self.view.open_reset_menu(),
                     Ok("stream") => self.view.commands.push("Stream"),
+                    Ok("about") => self.view.commands.push("About"),
                     Ok("monsters") => {
                         // rooms with monsters and floor drops (the bottom row done, the one above not), and with
                         // Z1R_SCREENSHOT_PICKER=1 the monster picker open
@@ -754,7 +790,7 @@ impl eframe::App for TrackerApp {
         let nr = self.view.notes_rect().translate(origin);
         let popup_open = self.view.popup.is_some();
         // while a blocking window (the Stream window) is open, the tracker takes no clicks, wheel or keys
-        let blocked = self.show_stream;
+        let blocked = self.show_stream || self.show_about;
         let notes = ui.put(
             nr,
             egui::TextEdit::multiline(&mut self.view.m.notes)

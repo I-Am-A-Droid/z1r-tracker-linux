@@ -1056,7 +1056,14 @@ impl View {
     }
 
     fn draw_item_progress(&mut self, p: &Painter) {
-        self.text(p, 4.0, PROGRESS_Y + 8.0, 11.0, Color32::GRAY, &format!("v{VERSION}"));
+        // the original's version button (CustomComboBoxes.makeVersionButtonWithBehavior): "v2.1.0" in orange at size 12;
+        // clicking it opens the About box
+        let vr = rect(2.0, PROGRESS_Y + 4.0, 58.0, 20.0);
+        let hov = self.hover == Target::Button("About");
+        self.fill_round(p, vr, if hov { Color32::from_rgb(60, 60, 70) } else { Color32::from_rgb(36, 36, 44) }, 3);
+        self.stroke_round(p, vr, 1.0, if hov { Color32::YELLOW } else { Color32::GRAY }, 3);
+        self.text_c(p, vr, 12.0, ORANGE, &format!("v{VERSION}"));
+        self.hit(vr, Target::Button("About"));
         self.text(p, 70.0, PROGRESS_Y + 8.0, 12.0, Color32::LIGHT_GRAY, "Items:");
         let m = &self.m;
         // a negative number means "not had yet": draw icon (-v - 1) dimmed
@@ -1762,6 +1769,17 @@ impl View {
 mod tests {
     use super::*;
     use crate::data::MONSTERS;
+
+    #[test]
+    fn version_texts_are_made_as_the_original_makes_them() {
+        use crate::data::{about_body, PROGRAM_NAME, VERSION, WEBSITE};
+        // "%d.%d.%d" of the program's version, "Z-Tracker v%s", and the About text round them
+        assert_eq!(VERSION, env!("CARGO_PKG_VERSION").split('.').take(3).collect::<Vec<_>>().join("."));
+        assert_eq!(PROGRAM_NAME, format!("Z-Tracker v{VERSION}"));
+        let about = about_body();
+        assert!(about.starts_with(&format!("BETA RELEASE version {} of {PROGRAM_NAME} originally by Dr. Brian Lorgon111 with updates by Neononane\n\nLearn more at\n{WEBSITE}\n", env!("CARGO_PKG_VERSION"))));
+        assert!(about.contains(crate::data::BUILD_DATE) && crate::data::BUILD_DATE.ends_with(" UTC"));
+    }
 
     #[test]
     fn only_bubbles_traps_and_others_stay_bright_in_a_done_room() {

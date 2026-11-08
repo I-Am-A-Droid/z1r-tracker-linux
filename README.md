@@ -95,7 +95,9 @@ Click **Stream** (under Reset...). The window that opens has:
 - The steps for OBS: Sources → **+** → **Media Source**, untick **Local File**, paste the address into
   **Input**, set **Input Format** to `mpjpeg`.
 
-Close the window before going live, because the stream shows whatever the tracker window shows.
+While the window is open the tracker behind it is dimmed and doesn't react to clicks or keys; close it with
+**Close**, Esc, or a click outside it. Close it before going live, because the stream shows whatever the tracker
+window shows.
 
 A **Browser Source** works too: use the address without `stream.mjpg` (for example `http://192.168.1.20:8765/`)
 and set its width and height to the tracker window's size. `…/frame.jpg` gives a single picture.

@@ -470,8 +470,16 @@ impl TrackerApp {
     /// The Stream button's window: streaming on or off, Local or Network (and which adapter), the address to paste
     /// into OBS, and how to set OBS up.
     fn stream_window(&mut self, ctx: &egui::Context) {
-        let mut open = self.show_stream;
-        egui::Window::new("Stream to OBS Studio").open(&mut open).default_width(470.0).resizable(false).collapsible(false).show(ctx, |ui| {
+        if !self.show_stream {
+            return;
+        }
+        // a modal window: the tracker behind it is dimmed and takes no clicks or keys until it is closed (Close,
+        // Esc, or a click outside it)
+        let mut close = false;
+        let shown = egui::Modal::new(egui::Id::unique("stream_to_obs")).show(ctx, |ui| {
+            ui.set_width(470.0);
+            ui.heading("Stream to OBS Studio");
+            ui.separator();
             let settings = &mut self.view.settings;
             let mut on = settings.get("StreamToOBS");
             if ui.checkbox(&mut on, "Streaming on").changed() {
@@ -556,8 +564,16 @@ impl TrackerApp {
                 ui.label(format!("OBS must be on the same network. If it can't connect, allow port {} (TCP) through this computer's firewall.", stream::STREAM_PORT));
             }
             ui.label("Close this window before going live: the stream shows what the tracker window shows.");
+            ui.add_space(6.0);
+            ui.vertical_centered(|ui| {
+                if ui.button("  Close  ").clicked() {
+                    close = true;
+                }
+            });
         });
-        self.show_stream = open;
+        if close || shown.should_close() {
+            self.show_stream = false;
+        }
     }
 
     fn windows(&mut self, ctx: &egui::Context) {
@@ -715,18 +731,24 @@ impl eframe::App for TrackerApp {
         // the notes box
         let nr = self.view.notes_rect().translate(origin);
         let popup_open = self.view.popup.is_some();
+        // while a blocking window (the Stream window) is open, the tracker takes no clicks, wheel or keys
+        let blocked = self.show_stream;
         let notes = ui.put(
             nr,
             egui::TextEdit::multiline(&mut self.view.m.notes)
                 .font(FontId::proportional(13.0))
                 .background_color(Color32::from_rgb(16, 16, 22))
-                .interactive(!popup_open)
+                .interactive(!popup_open && !blocked)
                 .desired_width(NOTES_RECT.2),
         );
         let notes_focused = notes.has_focus();
 
-        self.view.handle_input(&ctx, notes_focused);
-        if !notes_focused {
+        if blocked {
+            self.view.hover = view::Target::None;
+        } else {
+            self.view.handle_input(&ctx, notes_focused);
+        }
+        if !notes_focused && !blocked {
             let (f5, ctrl_s) = ctx.input(|i| (i.key_pressed(egui::Key::F5), i.modifiers.command && i.key_pressed(egui::Key::S)));
             if f5 {
                 self.view.paused = !self.view.paused;
